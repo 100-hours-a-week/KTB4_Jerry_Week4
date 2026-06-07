@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: talktalk
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+
+jwt:
+  secret: 9vo4PWkghgTn9gmft23AX65AYjw/XPExqUwN8t54VYshZoqDmfMMJp77Fb70KOccWcaODnY60OJeY/5ny1ZVTw==
+  access-token-exp-seconds: 900
+  refresh-token-exp-seconds: 12096000
