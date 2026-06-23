@@ -1,16 +1,13 @@
 package ktb.fullstack.talktalk.domain.auth.repository;
 
-import ktb.fullstack.talktalk.domain.auth.domain.Session;
+import ktb.fullstack.talktalk.domain.auth.entity.Session;
+import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
 
-public interface SessionRepository {
-
-    Session save(Session session);
+public interface SessionRepository extends JpaRepository<Session, Long> {
 
     Optional<Session> findByRefreshToken(String refreshToken);
-
-    void deleteById(Long id);
 
     void deleteByUserId(Long userId);
 }

@@ -15,6 +15,7 @@ public class CommentPageQueryAdapter implements CommentPageQuery {
 
     @Override
     public CursorPageResponse<CommentDto> getFirstPage(Long postId) {
-        return commentService.getComments(postId, null).getComments();
+
+        return commentService.getFirstPage(postId);
     }
 }

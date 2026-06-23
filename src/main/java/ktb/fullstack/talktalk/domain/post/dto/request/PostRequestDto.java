@@ -6,6 +6,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 
+import java.util.List;
+
 @Getter
 public class PostRequestDto {
 
@@ -17,6 +19,6 @@ public class PostRequestDto {
     private String content;
 
     @Nullable
-    @JsonProperty("post_image_url")
-    private String postImageUrl;
+    @JsonProperty("post_image_ids")
+    private List<Long> postImageIds;
 }

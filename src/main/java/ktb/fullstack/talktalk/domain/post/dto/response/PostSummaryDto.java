@@ -26,4 +26,10 @@ public class PostSummaryDto {
     private String createdAt;
 
     private WriterDto writer;
+
+    @JsonProperty("is_edited")
+    private boolean edited;
+
+    @JsonProperty("is_blinded")
+    private boolean blinded;
 }

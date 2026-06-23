@@ -24,8 +24,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> handleValidationException(MethodArgumentNotValidException e) {
 
-        String field = e.getBindingResult().getFieldErrors().getFirst().getField();
-        ErrorCode errorCode = resolveInvalidFieldErrorCode(field);
+        ErrorCode errorCode = ErrorCode.BAD_REQUEST;
         return ResponseEntity
                 .status(errorCode.getStatus())
                 .body(ApiResponse.of(errorCode.getMessage(), null));
@@ -47,17 +46,5 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(errorCode.getStatus())
                 .body(ApiResponse.of(errorCode.getMessage(), null));
-    }
-
-    private ErrorCode resolveInvalidFieldErrorCode(String field) {
-
-        return switch (field) {
-            case "email" -> ErrorCode.INVALID_EMAIL;
-            case "password" -> ErrorCode.INVALID_PASSWORD;
-            case "nickname" -> ErrorCode.INVALID_NICKNAME;
-            case "title" -> ErrorCode.INVALID_TITLE;
-            case "content" -> ErrorCode.INVALID_CONTENT;
-            default -> ErrorCode.INTERNAL_SERVER_ERROR;
-        };
     }
 }

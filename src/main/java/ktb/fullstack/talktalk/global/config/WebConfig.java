@@ -30,7 +30,8 @@ public class WebConfig implements WebMvcConfigurer {
                         "/sessions",
                         "/sessions/current/token",
                         "/images",
-                        "/images/*"
+                        "/images/*",
+                        "/h2-console/**"
                 );
     }
 

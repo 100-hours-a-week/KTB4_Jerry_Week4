@@ -54,9 +54,10 @@ public class PostController {
     }
 
     @GetMapping("/{postId}")
-    public ResponseEntity<ApiResponse<PostDetailResponseDto>> getPostDetail(@PathVariable Long postId) {
+    public ResponseEntity<ApiResponse<PostDetailResponseDto>> getPostDetail(
+            @PathVariable Long postId, @LoginUser LoginUserInfo loginUser) {
 
-        PostDetailResponseDto result = postService.getPostDetail(postId);
+        PostDetailResponseDto result = postService.getPostDetail(postId, loginUser.userId());
         return ResponseEntity.ok(ApiResponse.of("success", result));
     }
 

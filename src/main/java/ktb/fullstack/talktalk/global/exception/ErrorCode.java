@@ -8,12 +8,7 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public enum ErrorCode {
 
-    INVALID_EMAIL(HttpStatus.BAD_REQUEST, "invalid_email"),
-    INVALID_PASSWORD(HttpStatus.BAD_REQUEST, "invalid_password"),
-    INVALID_NICKNAME(HttpStatus.BAD_REQUEST, "invalid_nickname"),
-
-    INVALID_TITLE(HttpStatus.BAD_REQUEST, "invalid_title"),
-    INVALID_CONTENT(HttpStatus.BAD_REQUEST, "invalid_content"),
+    BAD_REQUEST(HttpStatus.BAD_REQUEST, "bad_request"),
 
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "invalid_credentials"),
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "invalid_token"),
@@ -23,14 +18,19 @@ public enum ErrorCode {
 
     POST_NOT_FOUND(HttpStatus.NOT_FOUND, "post_not_found"),
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "comment_not_found"),
+    IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "image_not_found"),
 
     EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "email_already_exists"),
     NICKNAME_ALREADY_EXISTS(HttpStatus.CONFLICT, "nickname_already_exists"),
+
+    CANNOT_REPLY_TO_REPLY(HttpStatus.CONFLICT, "cannot_reply_to_reply"),
+    ALREADY_REPORTED(HttpStatus.CONFLICT, "already_reported"),
 
     TOO_LARGE_FILE(HttpStatus.CONTENT_TOO_LARGE, "too_large_file"),
 
     UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "unsupported_media_type"),
 
+    TOO_MANY_POSTS_IN_SHORT(HttpStatus.TOO_MANY_REQUESTS, "too_many_posts_in_short"),
 
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "internal_server_error");
 

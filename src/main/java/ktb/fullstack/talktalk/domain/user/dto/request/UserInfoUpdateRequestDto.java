@@ -17,6 +17,6 @@ public class UserInfoUpdateRequestDto {
     private String nickname;
 
     @Nullable
-    @JsonProperty("profile_image_url")
-    private String profileImageUrl;
+    @JsonProperty("profile_image_id")
+    private Long profileImageId;
 }

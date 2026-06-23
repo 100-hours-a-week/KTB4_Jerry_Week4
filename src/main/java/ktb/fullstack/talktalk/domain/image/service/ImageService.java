@@ -1,6 +1,6 @@
 package ktb.fullstack.talktalk.domain.image.service;
 
-import ktb.fullstack.talktalk.domain.image.domain.Image;
+import ktb.fullstack.talktalk.domain.image.entity.Image;
 import ktb.fullstack.talktalk.domain.image.dto.response.ImageUploadResponseDto;
 import ktb.fullstack.talktalk.domain.image.repository.ImageRepository;
 import ktb.fullstack.talktalk.global.exception.BusinessException;

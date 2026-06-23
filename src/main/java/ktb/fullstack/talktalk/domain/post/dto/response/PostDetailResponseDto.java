@@ -7,6 +7,8 @@ import ktb.fullstack.talktalk.global.common.response.CursorPageResponse;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+import java.util.List;
+
 @Getter
 @AllArgsConstructor
 public class PostDetailResponseDto {
@@ -17,8 +19,8 @@ public class PostDetailResponseDto {
 
     private String content;
 
-    @JsonProperty("post_image_url")
-    private String postImageUrl;
+    @JsonProperty("post_image_urls")
+    private List<String> postImageUrls;
 
     @JsonProperty("like_count")
     private int likeCount;
@@ -33,6 +35,12 @@ public class PostDetailResponseDto {
     private String createdAt;
 
     private WriterDto writer;
+
+    @JsonProperty("is_edited")
+    private boolean edited;
+
+    @JsonProperty("is_blinded")
+    private boolean blinded;
 
     private CursorPageResponse<CommentDto> comments;
 }

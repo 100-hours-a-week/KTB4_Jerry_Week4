@@ -45,6 +45,14 @@ public class CommentController {
         return ResponseEntity.ok(ApiResponse.of("success", result));
     }
 
+    @GetMapping("/{commentId}/replies")
+    public ResponseEntity<ApiResponse<CommentListResponseDto>> getReplies(
+            @PathVariable Long postId, @PathVariable Long commentId, @RequestParam(required = false) Long cursor) {
+
+        CommentListResponseDto result = commentService.getReplies(postId, commentId, cursor);
+        return ResponseEntity.ok(ApiResponse.of("success", result));
+    }
+
     @PutMapping("/{commentId}")
     public ResponseEntity<ApiResponse<CreateResponseDto>> updateComment(
             @PathVariable Long postId,

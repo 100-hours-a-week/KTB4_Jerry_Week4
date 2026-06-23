@@ -3,6 +3,7 @@ package ktb.fullstack.talktalk.global.interceptor;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import ktb.fullstack.talktalk.domain.auth.repository.SessionRepository;
 import ktb.fullstack.talktalk.global.exception.BusinessException;
 import ktb.fullstack.talktalk.global.exception.ErrorCode;
 import ktb.fullstack.talktalk.global.jwt.JwtProvider;
@@ -18,6 +19,7 @@ public class AuthInterceptor implements HandlerInterceptor {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtProvider jwtProvider;
+    private final SessionRepository sessionRepository;
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
@@ -35,6 +37,10 @@ public class AuthInterceptor implements HandlerInterceptor {
         try {
             Long userId = jwtProvider.getUserId(accessToken);
             Long sessionId = jwtProvider.getSessionId(accessToken);
+            if (!sessionRepository.existsById(sessionId)) {
+                throw new BusinessException(ErrorCode.INVALID_TOKEN);
+            }
+
             request.setAttribute("userId", userId);
             request.setAttribute("sessionId", sessionId);
             return true;
