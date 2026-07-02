@@ -4,6 +4,7 @@ import ktb.fullstack.talktalk.domain.image.entity.Image;
 import ktb.fullstack.talktalk.domain.image.repository.ImageRepository;
 import ktb.fullstack.talktalk.domain.post.dto.request.PostDraftRequestDto;
 import ktb.fullstack.talktalk.domain.post.dto.response.PostDraftResponseDto;
+import ktb.fullstack.talktalk.domain.post.dto.response.PostImageDto;
 import ktb.fullstack.talktalk.domain.post.entity.PostDraft;
 import ktb.fullstack.talktalk.domain.post.repository.PostDraftRepository;
 import ktb.fullstack.talktalk.domain.user.repository.UserRepository;
@@ -14,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -76,12 +76,12 @@ public class PostDraftService {
         return new PostDraftResponseDto(
                 draft.getTitle(),
                 draft.getContent(),
-                toUrls(draft.getImageIds()),
+                toImages(draft.getImageIds()),
                 draft.getUpdatedAt().format(FORMATTER)
         );
     }
 
-    private List<String> toUrls(List<Long> imageIds) {
+    private List<PostImageDto> toImages(List<Long> imageIds) {
         if (imageIds.isEmpty()) {
             return List.of();
         }
@@ -90,8 +90,8 @@ public class PostDraftService {
                 .collect(Collectors.toMap(Image::getId, img -> IMAGE_URL_PREFIX + img.getFileName()));
 
         return imageIds.stream()
-                .map(urlsById::get)
-                .filter(Objects::nonNull)
+                .filter(urlsById::containsKey)
+                .map(id -> new PostImageDto(id, urlsById.get(id)))
                 .toList();
     }
 }

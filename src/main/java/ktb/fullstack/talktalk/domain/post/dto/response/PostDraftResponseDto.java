@@ -14,8 +14,8 @@ public class PostDraftResponseDto {
 
     private String content;
 
-    @JsonProperty("post_image_urls")
-    private List<String> postImageUrls;
+    @JsonProperty("post_images")
+    private List<PostImageDto> postImages;
 
     @JsonProperty("updated_at")
     private String updatedAt;

@@ -19,8 +19,11 @@ public class PostDetailResponseDto {
 
     private String content;
 
-    @JsonProperty("post_image_urls")
-    private List<String> postImageUrls;
+    @JsonProperty("post_images")
+    private List<PostImageDto> postImages;
+
+    @JsonProperty("is_liked")
+    private boolean liked;
 
     @JsonProperty("like_count")
     private int likeCount;

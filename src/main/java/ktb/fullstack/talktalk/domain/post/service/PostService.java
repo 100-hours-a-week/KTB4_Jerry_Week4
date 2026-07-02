@@ -2,6 +2,7 @@ package ktb.fullstack.talktalk.domain.post.service;
 
 import ktb.fullstack.talktalk.domain.image.entity.Image;
 import ktb.fullstack.talktalk.domain.image.repository.ImageRepository;
+import ktb.fullstack.talktalk.domain.post.dto.response.PostImageDto;
 import ktb.fullstack.talktalk.domain.post.entity.PostHistory;
 import ktb.fullstack.talktalk.domain.post.entity.PostImage;
 import ktb.fullstack.talktalk.domain.post.port.CommentCountQuery;
@@ -132,7 +133,8 @@ public class PostService {
                 post.getId(),
                 blinded ? BLINDED_DESCRIPTION : post.getTitle(),
                 blinded ? BLINDED_DESCRIPTION : post.getContent(),
-                blinded ? List.of() : getPostImageUrls(post.getId()),
+                blinded ? List.of() : getPostImages(post.getId()),
+                postLikeRepository.existsByPostIdAndUserId(post.getId(), userId),
                 postLikeRepository.countByPostId(post.getId()),
                 commentCountQuery.getCountByPostId(post.getId()),
                 post.getViewCount(),
@@ -229,18 +231,18 @@ public class PostService {
         }
     }
 
-    private List<String> getPostImageUrls(Long postId) {
-
-        return postImageRepository.findByPostIdOrderBySortOrderAsc(postId).stream()
-                .map(pi -> IMAGE_URL_PREFIX + pi.getImage().getFileName())
-                .toList();
-    }
-
     private void validatePostRateLimit(Long userId) {
 
         LocalDateTime windowStart = LocalDateTime.now().minus(POST_RATE_WINDOW);
         if (postRepository.countByUserIdAndCreatedAtAfter(userId, windowStart) >= POST_RATE_LIMIT) {
             throw new BusinessException(ErrorCode.TOO_MANY_POSTS_IN_SHORT);
         }
+    }
+
+    private List<PostImageDto> getPostImages(Long postId) {
+        return postImageRepository.findByPostIdOrderBySortOrderAsc(postId).stream()
+                .map(pi -> new PostImageDto(
+                        pi.getImage().getId(), IMAGE_URL_PREFIX + pi.getImage().getFileName()))
+                .toList();
     }
 }
