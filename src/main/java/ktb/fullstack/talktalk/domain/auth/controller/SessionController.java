@@ -62,7 +62,7 @@ public class SessionController {
         return ResponseCookie.from("refresh_token", refreshToken)
                 .httpOnly(true)
                 .secure(true)
-                .sameSite("None")
+                .sameSite("Lax")
                 .path("/")
                 .maxAge(maxAgeSeconds)
                 .build();

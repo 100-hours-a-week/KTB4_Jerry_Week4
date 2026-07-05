@@ -15,6 +15,7 @@ public enum ErrorCode {
 
     NOT_POST_OWNER(HttpStatus.FORBIDDEN, "not_post_owner"),
     NOT_COMMENT_OWNER(HttpStatus.FORBIDDEN, "not_comment_owner"),
+    FORBIDDEN(HttpStatus.FORBIDDEN, "forbidden"),
 
     POST_NOT_FOUND(HttpStatus.NOT_FOUND, "post_not_found"),
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "comment_not_found"),

@@ -16,6 +16,7 @@ import ktb.fullstack.talktalk.global.common.response.CreateResponseDto;
 import ktb.fullstack.talktalk.global.exception.BusinessException;
 import ktb.fullstack.talktalk.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,10 +30,8 @@ public class UserService {
     private final SessionRepository sessionRepository;
     private final ImageRepository imageRepository;
     private final ProfileImageRepository profileImageRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    /**
-     * 1. 회원가입 (유저 생성)
-     */
     @Transactional
     public CreateResponseDto createUser(UserSignupRequestDto request) {
 
@@ -45,7 +44,7 @@ public class UserService {
         }
 
         User savedUser = userRepository.save(
-                new User(request.getEmail(), request.getPassword(), request.getNickname()));
+                new User(request.getEmail(), passwordEncoder.encode(request.getPassword()), request.getNickname()));
 
         if (request.getProfileImageId() != null) {
             Image image = findImage(request.getProfileImageId());
@@ -55,27 +54,18 @@ public class UserService {
         return new CreateResponseDto(savedUser.getId());
     }
 
-    /**
-     * 2. 이메일 중복 검사
-     */
     @Transactional(readOnly = true)
     public AvailabilityResponseDto checkEmailAvailability(String email) {
 
         return new AvailabilityResponseDto(!userRepository.existsByEmail(email));
     }
 
-    /**
-     * 3. 닉네임 중복 검사
-     */
     @Transactional(readOnly = true)
     public AvailabilityResponseDto checkNicknameAvailability(String nickname) {
 
         return new AvailabilityResponseDto(!userRepository.existsByNickname(nickname));
     }
 
-    /**
-     * 4. 내 회원정보 조회
-     */
     @Transactional(readOnly = true)
     public UserInfoResponseDto getMyInfo(Long userId) {
 
@@ -84,9 +74,6 @@ public class UserService {
                 user.getId(), user.getEmail(), user.getNickname(), currentProfileImageUrl(userId));
     }
 
-    /**
-     * 5. 내 회원정보 변경
-     */
     @Transactional
     public UserInfoResponseDto updateMyInfo(Long userId, UserInfoUpdateRequestDto request) {
 
@@ -116,19 +103,13 @@ public class UserService {
                 user.getId(), user.getEmail(), user.getNickname(), currentProfileImageUrl(userId));
     }
 
-    /**
-     * 6. 비밀번호 변경
-     */
     @Transactional
     public void updatePassword(Long userId, UserPasswordUpdateRequestDto request) {
 
         User user = findUser(userId);
-        user.updatePassword(request.getPassword());
+        user.updatePassword(passwordEncoder.encode(request.getPassword()));
     }
 
-    /**
-     * 7. 회원 탈퇴
-     */
     @Transactional
     public void deleteMyAccount(Long userId) {
 
@@ -137,8 +118,6 @@ public class UserService {
         sessionRepository.deleteByUserId(user.getId());
     }
 
-
-    /* ===== 헬퍼 메소드 ===== */
 
     private String currentProfileImageUrl(Long userId) {
         return profileImageRepository.findByUserIdAndCurrentTrue(userId)

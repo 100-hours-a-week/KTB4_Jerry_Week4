@@ -9,12 +9,18 @@ import ktb.fullstack.talktalk.global.exception.BusinessException;
 import ktb.fullstack.talktalk.global.exception.ErrorCode;
 import ktb.fullstack.talktalk.global.jwt.JwtProvider;
 import ktb.fullstack.talktalk.global.jwt.RefreshTokenGenerator;
+import ktb.fullstack.talktalk.global.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -24,22 +30,27 @@ public class AuthService {
     private final SessionRepository sessionRepository;
     private final RefreshTokenGenerator refreshTokenGenerator;
     private final JwtProvider jwtProvider;
+    private final AuthenticationManager authenticationManager;
 
     @Value("${jwt.refresh-token-exp-seconds}")
     private long refreshTokenExpSeconds;
 
-    /**
-     * 1. 로그인 (세션 & JWT 생성)
-     */
     @Transactional
     public TokenResult login(LoginRequestDto request) {
 
-        User user = userRepository.findByEmailAndDeletedAtIsNull(request.getEmail())
-                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_CREDENTIALS));
-
-        if (!user.getPassword().equals(request.getPassword())) {
+        Authentication authentication;
+        try {
+            authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+            );
+        } catch (AuthenticationException e) {
             throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
         }
+
+        CustomUserDetails principal = (CustomUserDetails) authentication.getPrincipal();
+        Long userId = Objects.requireNonNull(principal).getUserId();
+
+        User user = userRepository.getReferenceById(userId);
 
         String refreshToken = refreshTokenGenerator.generate();
         LocalDateTime expiresAt = LocalDateTime.now().plusSeconds(refreshTokenExpSeconds);
@@ -49,10 +60,6 @@ public class AuthService {
         return new TokenResult(accessToken, refreshToken, refreshTokenExpSeconds);
     }
 
-    /**
-     *  2. 액세스토큰 및 리프레시토큰 재발급
-     *     - RTR 전략 사용
-     */
     public TokenResult refresh(String refreshToken) {
         if (refreshToken == null) {
             throw new BusinessException(ErrorCode.INVALID_TOKEN);
@@ -75,9 +82,6 @@ public class AuthService {
         return new TokenResult(newAccessToken, newRefreshToken, refreshTokenExpSeconds);
     }
 
-    /**
-     *  3. 로그아웃 (세션 삭제)
-     */
     public void logout(Long sessionId) {
         sessionRepository.deleteById(sessionId);
     }
