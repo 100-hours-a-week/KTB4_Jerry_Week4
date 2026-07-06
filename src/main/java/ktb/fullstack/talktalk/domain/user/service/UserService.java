@@ -35,19 +35,19 @@ public class UserService {
     @Transactional
     public CreateResponseDto createUser(UserSignupRequestDto request) {
 
-        if (userRepository.existsByEmail(request.getEmail())) {
+        if (userRepository.existsByEmail(request.email())) {
             throw new BusinessException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
 
-        if (userRepository.existsByNickname(request.getNickname())) {
+        if (userRepository.existsByNickname(request.nickname())) {
             throw new BusinessException(ErrorCode.NICKNAME_ALREADY_EXISTS);
         }
 
         User savedUser = userRepository.save(
-                new User(request.getEmail(), passwordEncoder.encode(request.getPassword()), request.getNickname()));
+                new User(request.email(), passwordEncoder.encode(request.password()), request.nickname()));
 
-        if (request.getProfileImageId() != null) {
-            Image image = findImage(request.getProfileImageId());
+        if (request.profileImageId() != null) {
+            Image image = findImage(request.profileImageId());
             profileImageRepository.save(new ProfileImage(savedUser, image, true));
         }
 
@@ -79,7 +79,7 @@ public class UserService {
 
         User user = findUser(userId);
 
-        String newNickname = request.getNickname();
+        String newNickname = request.nickname();
         if (newNickname != null && !newNickname.equals(user.getNickname())) {
             if (userRepository.existsByNickname(newNickname)) {
                 throw new BusinessException(ErrorCode.NICKNAME_ALREADY_EXISTS);
@@ -87,14 +87,14 @@ public class UserService {
             user.updateNickname(newNickname);
         }
 
-        if (request.getProfileImageId() != null) {
+        if (request.profileImageId() != null) {
             profileImageRepository.findByUserIdAndCurrentTrue(user.getId())
                     .ifPresent(ProfileImage::unmarkCurrent);
 
             ProfileImage target = profileImageRepository
-                    .findByUserIdAndImageId(userId, request.getProfileImageId())
+                    .findByUserIdAndImageId(userId, request.profileImageId())
                     .orElseGet(() -> profileImageRepository.save(
-                            new ProfileImage(user, findImage(request.getProfileImageId()), false)));
+                            new ProfileImage(user, findImage(request.profileImageId()), false)));
 
             target.markCurrent();
         }
@@ -107,7 +107,7 @@ public class UserService {
     public void updatePassword(Long userId, UserPasswordUpdateRequestDto request) {
 
         User user = findUser(userId);
-        user.updatePassword(passwordEncoder.encode(request.getPassword()));
+        user.updatePassword(passwordEncoder.encode(request.password()));
     }
 
     @Transactional
