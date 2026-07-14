@@ -1,5 +1,6 @@
 package ktb.fullstack.talktalk.domain.comment.service;
 
+import ktb.fullstack.talktalk.domain.comment.dto.response.CommentCreateResponseDto;
 import ktb.fullstack.talktalk.domain.comment.entity.Comment;
 import ktb.fullstack.talktalk.domain.comment.dto.request.CommentRequestDto;
 import ktb.fullstack.talktalk.domain.comment.dto.response.CommentDto;
@@ -36,11 +37,8 @@ public class CommentService {
     private final UserRepository userRepository;
     private final WriterResolver writerResolver;
 
-    /**
-     *  1. 댓글 생성
-     */
     @Transactional
-    public CreateResponseDto createComment(Long postId, Long userId, CommentRequestDto request) {
+    public CommentCreateResponseDto createComment(Long postId, Long userId, CommentRequestDto request) {
 
         Post post = validateAndGetPost(postId);
         User user = userRepository.findById(userId)
@@ -48,12 +46,9 @@ public class CommentService {
 
         Comment parentComment = resolveParent(postId, request.getParentId());
         Comment savedComment = commentRepository.save(new Comment(post, user, request.getContent(), parentComment));
-        return new CreateResponseDto(savedComment.getId());
+        return new CommentCreateResponseDto(savedComment.getId(), savedComment.getCreatedAt().format(FORMATTER));
     }
 
-    /**
-     *  2. 댓글 목록 조회
-     */
     @Transactional(readOnly = true)
     public CommentListResponseDto getComments(Long postId, Long cursor) {
 
@@ -61,9 +56,6 @@ public class CommentService {
         return new CommentListResponseDto(getTopLevelPage(postId, cursor));
     }
 
-    /**
-     *  2-1. 특정 댓글의 대댓글 목록 조회
-     */
     @Transactional(readOnly = true)
     public CommentListResponseDto getReplies(Long postId, Long parentId, Long cursor) {
 
@@ -79,18 +71,12 @@ public class CommentService {
         return new CommentListResponseDto(getReplyPage(parentId, cursor));
     }
 
-    /**
-     *  2-2. 첫 페이지의 댓글만 조회
-     */
     @Transactional(readOnly = true)
     public CursorPageResponse<CommentDto> getFirstPage(Long postId) {
 
         return getTopLevelPage(postId, null);
     }
 
-    /**
-     *  3. 댓글 내용 수정
-     */
     @Transactional
     public CreateResponseDto updateComment(Long postId, Long commentId, Long userId, CommentRequestDto request) {
 
@@ -99,9 +85,6 @@ public class CommentService {
         return new CreateResponseDto(comment.getId());
     }
 
-    /**
-     *  4. 댓글 삭제
-     */
     @Transactional
     public void deleteComment(Long postId, Long commentId, Long userId) {
 
@@ -117,8 +100,6 @@ public class CommentService {
         cleanupOrphanedParent(parent);
     }
 
-
-    /* ===== 헬퍼 메소드 ===== */
 
     private Comment validateAndFindComment(Long postId, Long commentId, Long userId) {
 
@@ -172,7 +153,6 @@ public class CommentService {
             commentRepository.delete(parent);
         }
     }
-
 
     private CommentDto toTopLevelDto(Comment comment) {
 

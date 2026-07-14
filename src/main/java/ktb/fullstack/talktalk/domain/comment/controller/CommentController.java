@@ -2,6 +2,7 @@ package ktb.fullstack.talktalk.domain.comment.controller;
 
 import jakarta.validation.Valid;
 import ktb.fullstack.talktalk.domain.comment.dto.request.CommentRequestDto;
+import ktb.fullstack.talktalk.domain.comment.dto.response.CommentCreateResponseDto;
 import ktb.fullstack.talktalk.domain.comment.dto.response.CommentListResponseDto;
 import ktb.fullstack.talktalk.domain.comment.service.CommentService;
 import ktb.fullstack.talktalk.global.common.response.ApiResponse;
@@ -23,12 +24,12 @@ public class CommentController {
     private final CommentService commentService;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<CreateResponseDto>> createComment(
+    public ResponseEntity<ApiResponse<CommentCreateResponseDto>> createComment(
             @PathVariable Long postId,
             @LoginUser LoginUserInfo loginUser,
             @Valid @RequestBody CommentRequestDto request) {
 
-        CreateResponseDto result = commentService.createComment(postId, loginUser.userId(), request);
+        CommentCreateResponseDto result = commentService.createComment(postId, loginUser.userId(), request);
 
         URI location = UriComponentsBuilder.fromPath("/posts/{postId}/comments/{commentId}")
                 .buildAndExpand(postId, result.getId())
