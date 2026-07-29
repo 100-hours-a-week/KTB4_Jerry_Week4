@@ -48,7 +48,6 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/sessions").permitAll()
                         .requestMatchers(HttpMethod.POST, "/sessions/current/token").permitAll()
                         .requestMatchers(HttpMethod.POST, "/images").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/images/**").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
                         .anyRequest().authenticated()
                 )

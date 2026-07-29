@@ -1,0 +1,25 @@
+services:
+  backend:
+    build:
+      context: .
+    image: jerryhy/talktalk-backend:latest
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/127.0.0.1/8080"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 40s
+    restart: unless-stopped
+
+  nginx:
+    build:
+      context: ../../week7/talktalk-FE
+    image: jerryhy/talktalk-frontend:latest
+    ports:
+      - "80:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
