@@ -38,3 +38,8 @@ out/
 
 .env
 compose.override.yaml
+
+deploy/.env
+deploy/fe-data/
+deploy/certs/
+deploy/nginx/active/backend.conf

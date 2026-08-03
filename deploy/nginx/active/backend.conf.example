@@ -1,0 +1,1 @@
+set $backend_host backend-blue;
