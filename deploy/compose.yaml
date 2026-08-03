@@ -1,6 +1,8 @@
 x-backend: &backend
   env_file:
     - .env
+  environment:
+    SPRING_PROFILES_ACTIVE: prod
   restart: unless-stopped
   healthcheck:
     test: ["CMD", "bash", "-c", "echo > /dev/tcp/127.0.0.1/8080"]
