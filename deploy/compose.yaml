@@ -3,6 +3,7 @@ x-backend: &backend
     - .env
   environment:
     SPRING_PROFILES_ACTIVE: prod
+  stop_grace_period: 40s
   restart: unless-stopped
   healthcheck:
     test: ["CMD", "bash", "-c", "echo > /dev/tcp/127.0.0.1/8080"]
