@@ -9,6 +9,8 @@ import org.springframework.http.HttpStatus;
 public enum ErrorCode {
 
     BAD_REQUEST(HttpStatus.BAD_REQUEST, "bad_request"),
+    CANNOT_CHAT_ALONE(HttpStatus.BAD_REQUEST, "cannot_chat_alone"),
+    EMPTY_MESSAGE(HttpStatus.BAD_REQUEST, "empty_message"),
 
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "invalid_credentials"),
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "invalid_token"),
@@ -20,6 +22,8 @@ public enum ErrorCode {
     POST_NOT_FOUND(HttpStatus.NOT_FOUND, "post_not_found"),
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "comment_not_found"),
     IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "image_not_found"),
+    PARTNER_NOT_FOUND(HttpStatus.NOT_FOUND, "partner_not_found"),
+    CHATROOM_NOT_FOUND(HttpStatus.NOT_FOUND, "chatroom_not_found"),
 
     EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "email_already_exists"),
     NICKNAME_ALREADY_EXISTS(HttpStatus.CONFLICT, "nickname_already_exists"),
