@@ -5,6 +5,7 @@ import ktb.fullstack.talktalk.domain.auth.repository.SessionRepository;
 import ktb.fullstack.talktalk.domain.chat.dto.request.ChatMessageSendRequestDto;
 import ktb.fullstack.talktalk.domain.chat.dto.response.MessageResponseDto;
 import ktb.fullstack.talktalk.domain.chat.entity.ChatRoom;
+import ktb.fullstack.talktalk.domain.chat.entity.ChatRoomMember;
 import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomMemberRepository;
 import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomRepository;
 import ktb.fullstack.talktalk.domain.chat.repository.MessageRepository;
@@ -70,6 +71,9 @@ public class ChatStompIntegrationTest {
         Session session = sessionRepository.save(new Session(one, "refreshToken", LocalDateTime.now().plusDays(1)));
 
         ChatRoom room = chatRoomRepository.save(ChatRoom.dm(DmKey.of(one.getId(), other.getId())));
+
+        chatRoomMemberRepository.save(new ChatRoomMember(room, one));
+        chatRoomMemberRepository.save(new ChatRoomMember(room, other));
 
         senderId = one.getId();
         roomId = room.getId();
