@@ -1,20 +1,48 @@
 package ktb.fullstack.talktalk.domain.chat.service;
 
+import ktb.fullstack.talktalk.domain.chat.dto.response.MessageListResponseDto;
 import ktb.fullstack.talktalk.domain.chat.dto.response.MessageResponseDto;
 import ktb.fullstack.talktalk.domain.chat.entity.Message;
+import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomMemberRepository;
 import ktb.fullstack.talktalk.domain.chat.repository.MessageRepository;
+import ktb.fullstack.talktalk.global.common.response.CursorPageResponse;
 import ktb.fullstack.talktalk.global.exception.BusinessException;
 import ktb.fullstack.talktalk.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class MessageService {
 
+    private static final int PAGE_SIZE = 30;
+
     private final MessageRepository messageRepository;
     private final MessageWriter messageWriter;
+    private final ChatRoomMemberRepository chatRoomMemberRepository;
+
+    @Transactional(readOnly = true)
+    public MessageListResponseDto getMessages(Long roomId, Long requesterId, Long cursor) {
+
+        if (!chatRoomMemberRepository.existsByRoomIdAndUserId(roomId, requesterId)) {
+            throw new BusinessException(ErrorCode.NOT_CHATROOM_MEMBER);
+        }
+
+        List<Message> messages = messageRepository.
+                findByRoomIdAndCursor(roomId, cursor, PageRequest.of(0, PAGE_SIZE + 1));
+
+        boolean hasNext = messages.size() > PAGE_SIZE;
+        List<Message> pageContent = hasNext ? messages.subList(0, PAGE_SIZE) : messages;
+        Long nextCursor = hasNext ? messages.getLast().getId() : null;
+
+        List<MessageResponseDto> items = pageContent.stream().map(MessageResponseDto::from).toList();
+        return new MessageListResponseDto(new CursorPageResponse<>(items, nextCursor));
+    }
 
     public MessageResponseDto send(Long roomId, Long senderId, String content, String clientMessageId) {
 

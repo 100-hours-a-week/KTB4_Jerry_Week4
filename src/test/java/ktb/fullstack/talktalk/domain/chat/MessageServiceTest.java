@@ -1,8 +1,10 @@
 package ktb.fullstack.talktalk.domain.chat;
 
+import ktb.fullstack.talktalk.domain.chat.dto.response.MessageListResponseDto;
 import ktb.fullstack.talktalk.domain.chat.dto.response.MessageResponseDto;
 import ktb.fullstack.talktalk.domain.chat.entity.ChatRoom;
 import ktb.fullstack.talktalk.domain.chat.entity.Message;
+import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomMemberRepository;
 import ktb.fullstack.talktalk.domain.chat.repository.MessageRepository;
 import ktb.fullstack.talktalk.domain.chat.service.MessageService;
 import ktb.fullstack.talktalk.domain.chat.service.MessageWriter;
@@ -17,14 +19,17 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
@@ -37,6 +42,9 @@ public class MessageServiceTest {
 
     @Mock
     MessageWriter messageWriter;
+
+    @Mock
+    ChatRoomMemberRepository chatRoomMemberRepository;
 
     @InjectMocks
     MessageService messageService;
@@ -146,6 +154,61 @@ public class MessageServiceTest {
                     .extracting("errorCode").isEqualTo(ErrorCode.EMPTY_CLIENT_MESSAGE_ID);
 
             then(messageWriter).should(never()).write(any(), any(), any(), any());
+        }
+    }
+
+    @Nested
+    @DisplayName("메시지 이력 조회")
+    class History {
+
+        private List<Message> messagesDesc(int count) {
+
+            List<Message> list = new ArrayList<>();
+            for (int i = count; i >= 1; i--) {
+                list.add(messageFixture((long) i, 1L, 5L, "m" + i, "cid-" + i));
+            }
+            return list;
+        }
+
+        @Test
+        @DisplayName("채팅방 멤버가 아니면 NOT_CHATROOM_MEMBER 예외")
+        void 비멤버_거부() {
+
+            given(chatRoomMemberRepository.existsByRoomIdAndUserId(1L, 5L)).willReturn(false);
+
+            assertThatThrownBy(() -> messageService.getMessages(1L, 5L, null))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode").isEqualTo(ErrorCode.NOT_CHATROOM_MEMBER);
+
+            then(messageRepository).should(never()).findByRoomIdAndCursor(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("다음 페이지가 있으면 PAGE_SIZE개만 반환하고 nextCursor로 다음 시작점을 준다")
+        void 다음_페이지_있음() {
+
+            given(chatRoomMemberRepository.existsByRoomIdAndUserId(1L, 5L)).willReturn(true);
+            given(messageRepository.findByRoomIdAndCursor(eq(1L), isNull(), any(Pageable.class)))
+                    .willReturn(messagesDesc(31));
+
+            MessageListResponseDto result = messageService.getMessages(1L, 5L, null);
+
+            assertThat(result.getMessages().getItems()).hasSize(30);
+            assertThat(result.getMessages().getNextCursor()).isEqualTo(1L);
+        }
+
+        @Test
+        @DisplayName("마지막 페이지면 남은 메시지를 전부 반환하고 nextCursor는 null이다")
+        void 마지막_페이지() {
+
+            given(chatRoomMemberRepository.existsByRoomIdAndUserId(1L, 5L)).willReturn(true);
+            given(messageRepository.findByRoomIdAndCursor(eq(1L), isNull(), any(Pageable.class)))
+                    .willReturn(messagesDesc(5));
+
+            MessageListResponseDto result = messageService.getMessages(1L, 5L, null);
+
+            assertThat(result.getMessages().getItems()).hasSize(5);
+            assertThat(result.getMessages().getNextCursor()).isNull();
         }
     }
 }
