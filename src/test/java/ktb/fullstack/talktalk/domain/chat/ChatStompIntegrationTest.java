@@ -3,6 +3,7 @@ package ktb.fullstack.talktalk.domain.chat;
 import ktb.fullstack.talktalk.domain.auth.entity.Session;
 import ktb.fullstack.talktalk.domain.auth.repository.SessionRepository;
 import ktb.fullstack.talktalk.domain.chat.dto.request.ChatMessageSendRequestDto;
+import ktb.fullstack.talktalk.domain.chat.dto.response.MessageErrorResponseDto;
 import ktb.fullstack.talktalk.domain.chat.dto.response.MessageResponseDto;
 import ktb.fullstack.talktalk.domain.chat.entity.ChatRoom;
 import ktb.fullstack.talktalk.domain.chat.entity.ChatRoomMember;
@@ -12,6 +13,7 @@ import ktb.fullstack.talktalk.domain.chat.repository.MessageRepository;
 import ktb.fullstack.talktalk.domain.chat.service.DmKey;
 import ktb.fullstack.talktalk.domain.user.entity.User;
 import ktb.fullstack.talktalk.domain.user.repository.UserRepository;
+import ktb.fullstack.talktalk.global.exception.ErrorCode;
 import ktb.fullstack.talktalk.global.jwt.JwtProvider;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,12 +48,18 @@ public class ChatStompIntegrationTest {
     @LocalServerPort
     int port;
 
-    @Autowired UserRepository userRepository;
-    @Autowired SessionRepository sessionRepository;
-    @Autowired JwtProvider jwtProvider;
-    @Autowired ChatRoomRepository chatRoomRepository;
-    @Autowired ChatRoomMemberRepository chatRoomMemberRepository;
-    @Autowired MessageRepository messageRepository;
+    @Autowired
+    UserRepository userRepository;
+    @Autowired
+    SessionRepository sessionRepository;
+    @Autowired
+    JwtProvider jwtProvider;
+    @Autowired
+    ChatRoomRepository chatRoomRepository;
+    @Autowired
+    ChatRoomMemberRepository chatRoomMemberRepository;
+    @Autowired
+    MessageRepository messageRepository;
 
     Long senderId;
     Long roomId;
@@ -68,7 +76,8 @@ public class ChatStompIntegrationTest {
 
         User one = userRepository.save(new User("sender@aaa.aaa", "Password123!", "one"));
         User other = userRepository.save(new User("other@aaa.aaa", "Password123!", "other"));
-        Session session = sessionRepository.save(new Session(one, "refreshToken", LocalDateTime.now().plusDays(1)));
+        Session session = sessionRepository.save(
+                new Session(one, "refreshToken", LocalDateTime.now().plusDays(1)));
 
         ChatRoom room = chatRoomRepository.save(ChatRoom.dm(DmKey.of(one.getId(), other.getId())));
 
@@ -101,18 +110,18 @@ public class ChatStompIntegrationTest {
         ).get(1, TimeUnit.SECONDS);
     }
 
-    private BlockingQueue<MessageResponseDto> subscribe(StompSession session, String destination) {
+    private <T> BlockingQueue<T> subscribe(StompSession session, String destination, Class<T> payloadType) {
 
-        BlockingQueue<MessageResponseDto> received = new LinkedBlockingQueue<>();
+        BlockingQueue<T> received = new LinkedBlockingQueue<>();
         session.subscribe(destination, new StompFrameHandler() {
             @Override
             public Type getPayloadType(StompHeaders headers) {
-                return MessageResponseDto.class;
+                return payloadType;
             }
 
             @Override
             public void handleFrame(StompHeaders headers, @Nullable Object payload) {
-                received.offer((MessageResponseDto) payload);
+                received.offer(payloadType.cast(payload));
             }
         });
         return received;
@@ -124,10 +133,12 @@ public class ChatStompIntegrationTest {
     void 채팅방_메시지_전송() throws Exception {
 
         StompSession session = connect();
-        BlockingQueue<MessageResponseDto> received = subscribe(session, "/topic/chat/rooms/" + roomId);
+        BlockingQueue<MessageResponseDto> received =
+                subscribe(session, "/topic/chat/rooms/" + roomId, MessageResponseDto.class);
 
         String clientMessageId = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
-        session.send("/app/chat/rooms/" + roomId, new ChatMessageSendRequestDto("Hi", clientMessageId));
+        session.send("/app/chat/rooms/" + roomId,
+                new ChatMessageSendRequestDto("Hi", clientMessageId));
 
         MessageResponseDto msg = received.poll(1, TimeUnit.SECONDS);
         assertThat(msg).isNotNull();
@@ -147,11 +158,14 @@ public class ChatStompIntegrationTest {
     void 재전송_멱등() throws Exception {
 
         StompSession session = connect();
-        BlockingQueue<MessageResponseDto> received = subscribe(session, "/topic/chat/rooms/" + roomId);
+        BlockingQueue<MessageResponseDto> received =
+                subscribe(session, "/topic/chat/rooms/" + roomId, MessageResponseDto.class);
 
         String clientMessageId = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
-        session.send("/app/chat/rooms/" + roomId, new ChatMessageSendRequestDto("Hi", clientMessageId));
-        session.send("/app/chat/rooms/" + roomId, new ChatMessageSendRequestDto("Hi", clientMessageId));
+        session.send("/app/chat/rooms/" + roomId,
+                new ChatMessageSendRequestDto("Hi", clientMessageId));
+        session.send("/app/chat/rooms/" + roomId,
+                new ChatMessageSendRequestDto("Hi", clientMessageId));
 
         MessageResponseDto first = received.poll(1, TimeUnit.SECONDS);
         MessageResponseDto second = received.poll(1, TimeUnit.SECONDS);
@@ -170,16 +184,38 @@ public class ChatStompIntegrationTest {
     void ACK_수신() throws Exception {
 
         StompSession session = connect();
-        BlockingQueue<MessageResponseDto> acks = subscribe(session, "/user/queue/acks");
+        BlockingQueue<MessageResponseDto> acks =
+                subscribe(session, "/user/queue/acks", MessageResponseDto.class);
 
         String clientMessageId = "cccccccc-cccc-cccc-cccc-cccccccccccc";
-        session.send("/app/chat/rooms/" + roomId, new ChatMessageSendRequestDto("Hi", clientMessageId));
+        session.send("/app/chat/rooms/" + roomId,
+                new ChatMessageSendRequestDto("Hi", clientMessageId));
 
         MessageResponseDto ack = acks.poll(1, TimeUnit.SECONDS);
         assertThat(ack).isNotNull();
         assertThat(ack.clientMessageId()).isEqualTo(clientMessageId);
         assertThat(ack.messageId()).isNotNull();
         assertThat(ack.roomId()).isEqualTo(roomId);
+
+        session.disconnect();
+    }
+
+    @Test
+    @DisplayName("전송이 실패하면 발신자에게 에러 코드와 clientMessageId가 도착한다")
+    void 전송_실패_에러_수신() throws Exception {
+
+        StompSession session = connect();
+        BlockingQueue<MessageErrorResponseDto> errors =
+                subscribe(session, "/user/queue/errors", MessageErrorResponseDto.class);
+
+        String clientMessageId = "dddddddd-dddd-dddd-dddd-dddddddddddd";
+        session.send("/app/chat/rooms/" + roomId, new ChatMessageSendRequestDto("", clientMessageId));
+
+        MessageErrorResponseDto error = errors.poll(1, TimeUnit.SECONDS);
+        assertThat(error).isNotNull();
+        assertThat(error.code()).isEqualTo(ErrorCode.EMPTY_MESSAGE.name());
+        assertThat(error.clientMessageId()).isEqualTo(clientMessageId);
+        assertThat(messageRepository.count()).isZero();
 
         session.disconnect();
     }
