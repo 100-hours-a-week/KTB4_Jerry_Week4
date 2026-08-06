@@ -28,6 +28,8 @@ public class MessageWriter {
         User sender = userRepository.findById(senderId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_TOKEN));
 
-        return messageRepository.save(new Message(room, sender, content, clientMessageId));
+        Message message = messageRepository.save(new Message(room, sender, content, clientMessageId));
+        room.updateLastMessage(message);
+        return message;
     }
 }
