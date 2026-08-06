@@ -87,23 +87,24 @@ public class ChatStompIntegrationTest {
         return client;
     }
 
-    @Test
-    @DisplayName("채팅방으로 보낸 메시지가 저장되고, 그 채팅방 구독자에게 senderId와 함께 전달된다")
-    void 채팅방_메시지_전송() throws Exception {
-
-        BlockingQueue received = new LinkedBlockingQueue();
+    private StompSession connect() throws Exception {
 
         StompHeaders connectHeaders = new StompHeaders();
         connectHeaders.add("Authorization", "Bearer " + token);
 
-        StompSession session = client().connectAsync(
+        return client().connectAsync(
                 "ws://localhost:" + port + "/ws",
                 new WebSocketHttpHeaders(),
                 connectHeaders,
-                new StompSessionHandlerAdapter() {}
+                new StompSessionHandlerAdapter() {
+                }
         ).get(1, TimeUnit.SECONDS);
+    }
 
-        session.subscribe("/topic/chat/rooms/" + roomId, new StompFrameHandler() {
+    private BlockingQueue<MessageResponseDto> subscribe(StompSession session, String destination) {
+
+        BlockingQueue<MessageResponseDto> received = new LinkedBlockingQueue<>();
+        session.subscribe(destination, new StompFrameHandler() {
             @Override
             public Type getPayloadType(StompHeaders headers) {
                 return MessageResponseDto.class;
@@ -111,14 +112,24 @@ public class ChatStompIntegrationTest {
 
             @Override
             public void handleFrame(StompHeaders headers, @Nullable Object payload) {
-                received.offer(payload);
+                received.offer((MessageResponseDto) payload);
             }
         });
+        return received;
+    }
+
+
+    @Test
+    @DisplayName("채팅방으로 보낸 메시지가 저장되고, 그 채팅방 구독자에게 senderId와 함께 전달된다")
+    void 채팅방_메시지_전송() throws Exception {
+
+        StompSession session = connect();
+        BlockingQueue<MessageResponseDto> received = subscribe(session, "/topic/chat/rooms/" + roomId);
 
         String clientMessageId = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
         session.send("/app/chat/rooms/" + roomId, new ChatMessageSendRequestDto("Hi", clientMessageId));
 
-        MessageResponseDto msg = (MessageResponseDto) received.poll(1, TimeUnit.SECONDS);
+        MessageResponseDto msg = received.poll(1, TimeUnit.SECONDS);
         assertThat(msg).isNotNull();
         assertThat(msg.roomId()).isEqualTo(roomId);
         assertThat(msg.senderId()).isEqualTo(senderId);
@@ -135,28 +146,8 @@ public class ChatStompIntegrationTest {
     @DisplayName("같은 clientMessageId로 재전송해도 메시지는 한 번만 저장된다")
     void 재전송_멱등() throws Exception {
 
-        BlockingQueue<MessageResponseDto> received = new LinkedBlockingQueue<>();
-
-        StompHeaders connectHeaders = new StompHeaders();
-        connectHeaders.add("Authorization", "Bearer " + token);
-
-        StompSession session = client().connectAsync(
-                "ws://localhost:" + port + "/ws",
-                new WebSocketHttpHeaders(),
-                connectHeaders,
-                new StompSessionHandlerAdapter() {}
-        ).get(1, TimeUnit.SECONDS);
-
-        session.subscribe("/topic/chat/rooms/" + roomId, new StompFrameHandler() {
-            @Override
-            public Type getPayloadType(StompHeaders headers) {
-                return MessageResponseDto.class;
-            }
-            @Override
-            public void handleFrame(StompHeaders headers, @Nullable Object payload) {
-                received.offer((MessageResponseDto) payload);
-            }
-        });
+        StompSession session = connect();
+        BlockingQueue<MessageResponseDto> received = subscribe(session, "/topic/chat/rooms/" + roomId);
 
         String clientMessageId = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
         session.send("/app/chat/rooms/" + roomId, new ChatMessageSendRequestDto("Hi", clientMessageId));
@@ -168,8 +159,29 @@ public class ChatStompIntegrationTest {
         assertThat(first).isNotNull();
         assertThat(second).isNotNull();
         assertThat(second.messageId()).isEqualTo(first.messageId());
+
         assertThat(messageRepository.count()).isEqualTo(1);
 
         session.disconnect();
     }
+
+    @Test
+    @DisplayName("메시지를 보내면 발신자에게 clientMessageId와 messageId를 담은 ACK가 도착한다")
+    void ACK_수신() throws Exception {
+
+        StompSession session = connect();
+        BlockingQueue<MessageResponseDto> acks = subscribe(session, "/user/queue/acks");
+
+        String clientMessageId = "cccccccc-cccc-cccc-cccc-cccccccccccc";
+        session.send("/app/chat/rooms/" + roomId, new ChatMessageSendRequestDto("Hi", clientMessageId));
+
+        MessageResponseDto ack = acks.poll(1, TimeUnit.SECONDS);
+        assertThat(ack).isNotNull();
+        assertThat(ack.clientMessageId()).isEqualTo(clientMessageId);
+        assertThat(ack.messageId()).isNotNull();
+        assertThat(ack.roomId()).isEqualTo(roomId);
+
+        session.disconnect();
+    }
+
 }

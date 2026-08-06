@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
+import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 
@@ -21,6 +22,7 @@ public class ChatController {
 
     @MessageMapping("/chat/rooms/{roomId}")
     @SendTo("/topic/chat/rooms/{roomId}")
+    @SendToUser(destinations = "/queue/acks", broadcast = false)
     public MessageResponseDto handle(
             @DestinationVariable Long roomId,
             ChatMessageSendRequestDto request,
