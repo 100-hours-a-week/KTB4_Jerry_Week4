@@ -39,4 +39,11 @@ public class ChatRoomMember extends BaseTimeEntity {
         this.room = room;
         this.user = user;
     }
+
+    public void updateLastRead(Long messageId) {
+
+        if (messageId != null && (lastReadMessageId == null || messageId > lastReadMessageId)) {
+            this.lastReadMessageId = messageId;
+        }
+    }
 }

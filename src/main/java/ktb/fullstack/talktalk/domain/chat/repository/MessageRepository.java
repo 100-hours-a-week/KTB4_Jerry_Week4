@@ -19,4 +19,12 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
             order by m.id desc
            """)
     List<Message> findByRoomIdAndCursor(@Param("roomId") Long roomId, @Param("cursor") Long cursor, Pageable pageable);
+
+    @Query("""
+            select count(m) from Message m
+            where m.room.id = :roomId and m.sender.id <> :userId
+                and (:lastReadMessageId is null or m.id > :lastReadMessageId)
+           """)
+    long countUnread(@Param("roomId") Long roomId, @Param("userId") Long userId,
+                     @Param("lastReadMessageId") Long lastReadMessageId);
 }
