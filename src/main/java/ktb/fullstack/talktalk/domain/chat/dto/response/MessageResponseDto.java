@@ -9,6 +9,7 @@ public record MessageResponseDto(
         Long roomId,
         Long senderId,
         String content,
+        String clientMessageId,
         LocalDateTime createdAt
 ) {
     public static MessageResponseDto from(Message message) {
@@ -18,6 +19,7 @@ public record MessageResponseDto(
                 message.getRoom().getId(),
                 message.getSender().getId(),
                 message.getContent(),
+                message.getClientMessageId(),
                 message.getCreatedAt()
         );
     }

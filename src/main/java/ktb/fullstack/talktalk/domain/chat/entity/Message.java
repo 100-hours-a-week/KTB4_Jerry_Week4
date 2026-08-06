@@ -10,7 +10,12 @@ import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
 @Entity
-@Table(name = "messages")
+@Table(name = "messages",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uq_message_idempotency",
+                columnNames = {"room_id", "sender_id", "client_message_id"}
+        )
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Message extends BaseTimeEntity {
@@ -31,9 +36,13 @@ public class Message extends BaseTimeEntity {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
-    public Message(ChatRoom room, User sender, String content) {
+    @Column(name = "client_message_id", nullable = false, updatable = false)
+    private String clientMessageId;
+
+    public Message(ChatRoom room, User sender, String content, String clientMessageId) {
         this.room = room;
         this.sender = sender;
         this.content = content;
+        this.clientMessageId = clientMessageId;
     }
 }

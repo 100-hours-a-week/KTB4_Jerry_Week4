@@ -27,6 +27,6 @@ public class ChatController {
             Principal principal) {
 
         LoginUserInfo sender = (LoginUserInfo) ((Authentication) principal).getPrincipal();
-        return messageService.send(roomId, sender.userId(), request.content());
+        return messageService.send(roomId, sender.userId(), request.content(), request.clientMessageId());
     }
 }

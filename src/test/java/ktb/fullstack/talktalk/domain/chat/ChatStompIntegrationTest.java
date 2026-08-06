@@ -111,11 +111,12 @@ public class ChatStompIntegrationTest {
 
             @Override
             public void handleFrame(StompHeaders headers, @Nullable Object payload) {
-                received.offer((MessageResponseDto) payload);
+                received.offer(payload);
             }
         });
 
-        session.send("/app/chat/rooms/" + roomId, new ChatMessageSendRequestDto("Hi"));
+        String clientMessageId = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+        session.send("/app/chat/rooms/" + roomId, new ChatMessageSendRequestDto("Hi", clientMessageId));
 
         MessageResponseDto msg = (MessageResponseDto) received.poll(1, TimeUnit.SECONDS);
         assertThat(msg).isNotNull();
@@ -123,7 +124,50 @@ public class ChatStompIntegrationTest {
         assertThat(msg.senderId()).isEqualTo(senderId);
         assertThat(msg.content()).isEqualTo("Hi");
         assertThat(msg.messageId()).isNotNull();
+        assertThat(msg.clientMessageId()).isEqualTo(clientMessageId);
 
+        assertThat(messageRepository.count()).isEqualTo(1);
+
+        session.disconnect();
+    }
+
+    @Test
+    @DisplayName("같은 clientMessageId로 재전송해도 메시지는 한 번만 저장된다")
+    void 재전송_멱등() throws Exception {
+
+        BlockingQueue<MessageResponseDto> received = new LinkedBlockingQueue<>();
+
+        StompHeaders connectHeaders = new StompHeaders();
+        connectHeaders.add("Authorization", "Bearer " + token);
+
+        StompSession session = client().connectAsync(
+                "ws://localhost:" + port + "/ws",
+                new WebSocketHttpHeaders(),
+                connectHeaders,
+                new StompSessionHandlerAdapter() {}
+        ).get(1, TimeUnit.SECONDS);
+
+        session.subscribe("/topic/chat/rooms/" + roomId, new StompFrameHandler() {
+            @Override
+            public Type getPayloadType(StompHeaders headers) {
+                return MessageResponseDto.class;
+            }
+            @Override
+            public void handleFrame(StompHeaders headers, @Nullable Object payload) {
+                received.offer((MessageResponseDto) payload);
+            }
+        });
+
+        String clientMessageId = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
+        session.send("/app/chat/rooms/" + roomId, new ChatMessageSendRequestDto("Hi", clientMessageId));
+        session.send("/app/chat/rooms/" + roomId, new ChatMessageSendRequestDto("Hi", clientMessageId));
+
+        MessageResponseDto first = received.poll(1, TimeUnit.SECONDS);
+        MessageResponseDto second = received.poll(1, TimeUnit.SECONDS);
+
+        assertThat(first).isNotNull();
+        assertThat(second).isNotNull();
+        assertThat(second.messageId()).isEqualTo(first.messageId());
         assertThat(messageRepository.count()).isEqualTo(1);
 
         session.disconnect();

@@ -1,4 +1,4 @@
 package ktb.fullstack.talktalk.domain.chat.dto.request;
 
-public record ChatMessageSendRequestDto(String content) {
+public record ChatMessageSendRequestDto(String content, String clientMessageId) {
 }
