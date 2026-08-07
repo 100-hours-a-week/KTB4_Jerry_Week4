@@ -17,13 +17,16 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
+import java.security.Principal;
 import java.util.List;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
 public class StompAuthChannelInterceptor implements ChannelInterceptor {
 
     private static final String BEARER_PREFIX = "Bearer ";
+    private static final String CONNECTED_AT = "connectedAt";
 
     private final JwtProvider jwtProvider;
     private final SessionRepository sessionRepository;
@@ -32,8 +35,16 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
 
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
-        if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
+        if (accessor == null) return message;
+
+        StompCommand command = accessor.getCommand();
+        if (StompCommand.CONNECT.equals(command)) {
             accessor.setUser(authenticate(accessor));
+            markConnectedAt(accessor);
+
+        } else if (StompCommand.SEND.equals(command) || StompCommand.SUBSCRIBE.equals(command)) {
+            verifyWithinLifetime(accessor);
+            verifySessionAlive(accessor);
         }
         return message;
     }
@@ -57,6 +68,38 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
             return new UsernamePasswordAuthenticationToken(principal, null, List.of());
 
         } catch (JwtException | IllegalArgumentException e) {
+            throw new BusinessException(ErrorCode.INVALID_TOKEN);
+        }
+    }
+
+    private void verifySessionAlive(StompHeaderAccessor accessor) {
+
+        Principal user = accessor.getUser();
+        if (user == null) {
+            throw new BusinessException(ErrorCode.INVALID_TOKEN);
+        }
+
+        LoginUserInfo info = (LoginUserInfo) ((Authentication) user).getPrincipal();
+        if (!sessionRepository.existsById(info.sessionId())) {
+            throw new BusinessException(ErrorCode.INVALID_TOKEN);
+        }
+    }
+
+    private void markConnectedAt(StompHeaderAccessor accessor) {
+
+        Map<String, Object> attributes = accessor.getSessionAttributes();
+        if (attributes != null) {
+            attributes.put(CONNECTED_AT, System.currentTimeMillis());
+        }
+    }
+
+    private void verifyWithinLifetime(StompHeaderAccessor accessor) {
+
+        Map<String, Object> attributes = accessor.getSessionAttributes();
+        if (attributes == null) return;
+
+        if (attributes.get(CONNECTED_AT) instanceof Long connectedAt
+                && System.currentTimeMillis() - connectedAt > jwtProvider.getAccessTokenExpirationMillis()) {
             throw new BusinessException(ErrorCode.INVALID_TOKEN);
         }
     }

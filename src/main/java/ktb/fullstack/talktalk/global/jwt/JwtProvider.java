@@ -55,4 +55,8 @@ public class JwtProvider {
     public Long getSessionId(String token) {
         return parse(token).getPayload().get("sessionId", Long.class);
     }
+
+    public long getAccessTokenExpirationMillis() {
+        return accessTokenExpirationMillis;
+    }
 }

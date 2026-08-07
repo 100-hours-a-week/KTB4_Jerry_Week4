@@ -16,10 +16,13 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import java.util.List;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.*;
 import static org.mockito.BDDMockito.given;
 
 @ExtendWith(MockitoExtension.class)
@@ -45,6 +48,23 @@ public class StompAuthChannelInterceptorTest {
         if (authHeader != null) {
             accessor.addNativeHeader("Authorization", authHeader);
         }
+        return MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
+    }
+
+    private Message<byte[]> userFrame(StompCommand command, Long sessionId) {
+
+        StompHeaderAccessor accessor = StompHeaderAccessor.create(command);
+        accessor.setLeaveMutable(true);
+        accessor.setUser(new UsernamePasswordAuthenticationToken(new LoginUserInfo(1L, sessionId), null, List.of()));
+        return MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
+    }
+
+    private Message<byte[]> userFrameConnectedAt(StompCommand command, Long sessionId, long connectedAt) {
+
+        StompHeaderAccessor accessor = StompHeaderAccessor.create(command);
+        accessor.setLeaveMutable(true);
+        accessor.setUser(new UsernamePasswordAuthenticationToken(new LoginUserInfo(1L, sessionId), null, List.of()));
+        accessor.setSessionAttributes(Map.of("connectedAt", connectedAt));
         return MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
     }
 
@@ -91,6 +111,60 @@ public class StompAuthChannelInterceptorTest {
         String token = jwtProvider.generateAccessToken(1L, 2L);
 
         assertThatThrownBy(() -> interceptor.preSend(connectMessage("Bearer " + token), null))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.INVALID_TOKEN);
+    }
+
+    @Test
+    @DisplayName("SEND 프레임 처리 시 세션이 살아있으면 통과한다")
+    void SEND_세션_살아있으면_통과() {
+
+        given(sessionRepository.existsById(2L)).willReturn(true);
+
+        assertThatCode(() -> interceptor.preSend(userFrame(StompCommand.SEND, 2L), null))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("연결 중 세션이 폐기되면 SEND 프레임을 거부한다")
+    void 세션_폐기되면_SEND_거부() {
+
+        given(sessionRepository.existsById(2L)).willReturn(false);
+
+        assertThatThrownBy(() -> interceptor.preSend(userFrame(StompCommand.SEND, 2L), null))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.INVALID_TOKEN);
+    }
+
+    @Test
+    @DisplayName("연결 중 세션이 폐기되면 SUBSCRIBE 프레임을 거부한다")
+    void 세션_폐기되면_SUBSCRIBE_거부() {
+
+        given(sessionRepository.existsById(2L)).willReturn(false);
+
+        assertThatThrownBy(() -> interceptor.preSend(userFrame(StompCommand.SUBSCRIBE, 2L), null))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.INVALID_TOKEN);
+    }
+
+    @Test
+    @DisplayName("연결 수명 이내면 통과한다")
+    void 수명_이내면_통과() {
+
+        given(sessionRepository.existsById(2L)).willReturn(true);
+        Message<byte[]> frame = userFrameConnectedAt(StompCommand.SEND, 2L, System.currentTimeMillis());
+
+        assertThatCode(() -> interceptor.preSend(frame, null)).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("연결 수명 TTL을 넘으면 거부한다")
+    void 수명_초과면_거부() {
+
+        long ago = System.currentTimeMillis() - (jwtProvider.getAccessTokenExpirationMillis() + 1);
+        Message<byte[]> frame = userFrameConnectedAt(StompCommand.SEND, 2L, ago);
+
+        assertThatThrownBy(() -> interceptor.preSend(frame, null))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.INVALID_TOKEN);
     }
