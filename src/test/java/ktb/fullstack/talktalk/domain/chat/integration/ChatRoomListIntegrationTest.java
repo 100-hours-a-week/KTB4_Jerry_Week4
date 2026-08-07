@@ -8,7 +8,7 @@ import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomMemberRepository;
 import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomRepository;
 import ktb.fullstack.talktalk.domain.chat.repository.MessageRepository;
 import ktb.fullstack.talktalk.domain.chat.service.ChatReadService;
-import ktb.fullstack.talktalk.domain.chat.service.ChatRoomListService;
+import ktb.fullstack.talktalk.domain.chat.service.ChatRoomQueryService;
 import ktb.fullstack.talktalk.domain.chat.service.DmKey;
 import ktb.fullstack.talktalk.domain.chat.service.MessageService;
 import ktb.fullstack.talktalk.domain.user.entity.User;
@@ -47,7 +47,7 @@ public class ChatRoomListIntegrationTest {
     ChatReadService chatReadService;
 
     @Autowired
-    ChatRoomListService chatRoomListService;
+    ChatRoomQueryService chatRoomQueryService;
 
     Long meId;
     Long roomWithAliceId;
@@ -92,7 +92,7 @@ public class ChatRoomListIntegrationTest {
     @DisplayName("최근 활동순으로 채팅방 목록을 반환하고, 채팅방마다 상대방, 미리보기, 안 읽은 수를 담는다")
     void 채팅방_목록_조립() {
 
-        ChatRoomListResponseDto result = chatRoomListService.getMyRooms(meId, null);
+        ChatRoomListResponseDto result = chatRoomQueryService.getMyRooms(meId, null);
         List<ChatRoomSummaryDto> items = result.getRooms().getItems();
 
         assertThat(items).hasSize(2);
@@ -123,7 +123,7 @@ public class ChatRoomListIntegrationTest {
             messageService.send(room.getId(), partner.getId(), "m" + i, "cid-p" + i);
         }
 
-        ChatRoomListResponseDto page1 = chatRoomListService.getMyRooms(meId, null);
+        ChatRoomListResponseDto page1 = chatRoomQueryService.getMyRooms(meId, null);
         List<Long> page1Ids = page1.getRooms().getItems().stream()
                 .map(ChatRoomSummaryDto::roomId).toList();
         Long cursor = page1.getRooms().getNextCursor();
@@ -131,7 +131,7 @@ public class ChatRoomListIntegrationTest {
         assertThat(page1Ids).hasSize(20);
         assertThat(cursor).isNotNull();
 
-        ChatRoomListResponseDto page2 = chatRoomListService.getMyRooms(meId, cursor);
+        ChatRoomListResponseDto page2 = chatRoomQueryService.getMyRooms(meId, cursor);
         List<Long> page2Ids = page2.getRooms().getItems().stream()
                 .map(ChatRoomSummaryDto::roomId).toList();
 
@@ -150,7 +150,7 @@ public class ChatRoomListIntegrationTest {
                 .findFirst().orElseThrow().getId();
         chatReadService.markRead(roomWithAliceId, meId, lastId);
 
-        ChatRoomListResponseDto result = chatRoomListService.getMyRooms(meId, null);
+        ChatRoomListResponseDto result = chatRoomQueryService.getMyRooms(meId, null);
         ChatRoomSummaryDto alice = result.getRooms().getItems().stream()
                 .filter(r -> r.roomId().equals(roomWithAliceId))
                 .findFirst().orElseThrow();
