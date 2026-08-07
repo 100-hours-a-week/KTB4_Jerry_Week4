@@ -1,4 +1,4 @@
-package ktb.fullstack.talktalk.domain.chat;
+package ktb.fullstack.talktalk.domain.chat.unit;
 
 import ktb.fullstack.talktalk.domain.chat.interceptor.ChatMembershipInterceptor;
 import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomMemberRepository;

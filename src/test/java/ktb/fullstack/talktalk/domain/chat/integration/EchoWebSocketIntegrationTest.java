@@ -1,4 +1,4 @@
-package ktb.fullstack.talktalk.domain.chat;
+package ktb.fullstack.talktalk.domain.chat.integration;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

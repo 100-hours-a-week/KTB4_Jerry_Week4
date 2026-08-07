@@ -1,4 +1,4 @@
-package ktb.fullstack.talktalk.domain.chat;
+package ktb.fullstack.talktalk.domain.chat.unit;
 
 import ktb.fullstack.talktalk.domain.chat.service.DmKey;
 import org.junit.jupiter.api.DisplayName;

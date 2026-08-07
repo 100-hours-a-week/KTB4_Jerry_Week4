@@ -1,4 +1,4 @@
-package ktb.fullstack.talktalk.domain.chat;
+package ktb.fullstack.talktalk.domain.chat.demo;
 
 import jakarta.transaction.Transactional;
 import ktb.fullstack.talktalk.domain.chat.entity.ChatRoom;

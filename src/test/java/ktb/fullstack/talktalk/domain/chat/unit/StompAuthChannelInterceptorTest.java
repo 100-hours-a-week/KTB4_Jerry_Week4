@@ -1,4 +1,4 @@
-package ktb.fullstack.talktalk.domain.chat;
+package ktb.fullstack.talktalk.domain.chat.unit;
 
 import ktb.fullstack.talktalk.domain.auth.repository.SessionRepository;
 import ktb.fullstack.talktalk.global.exception.BusinessException;

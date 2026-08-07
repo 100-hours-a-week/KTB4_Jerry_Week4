@@ -1,4 +1,4 @@
-package ktb.fullstack.talktalk.domain.chat;
+package ktb.fullstack.talktalk.domain.chat.unit;
 
 import ktb.fullstack.talktalk.domain.chat.dto.response.MessageListResponseDto;
 import ktb.fullstack.talktalk.domain.chat.dto.response.MessageResponseDto;

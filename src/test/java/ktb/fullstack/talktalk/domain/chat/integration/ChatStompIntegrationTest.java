@@ -1,4 +1,4 @@
-package ktb.fullstack.talktalk.domain.chat;
+package ktb.fullstack.talktalk.domain.chat.integration;
 
 import ktb.fullstack.talktalk.domain.auth.entity.Session;
 import ktb.fullstack.talktalk.domain.auth.repository.SessionRepository;
