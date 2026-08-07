@@ -9,6 +9,8 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "messages",
         uniqueConstraints = @UniqueConstraint(
@@ -39,10 +41,21 @@ public class Message extends BaseTimeEntity {
     @Column(name = "client_message_id", nullable = false, updatable = false)
     private String clientMessageId;
 
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     public Message(ChatRoom room, User sender, String content, String clientMessageId) {
         this.room = room;
         this.sender = sender;
         this.content = content;
         this.clientMessageId = clientMessageId;
+    }
+
+    public void softDelete() {
+        this.deletedAt = LocalDateTime.now();
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
     }
 }

@@ -27,8 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -211,4 +210,88 @@ public class MessageServiceTest {
             assertThat(result.getMessages().getNextCursor()).isNull();
         }
     }
+
+    @Nested
+    @DisplayName("삭제")
+    class Delete {
+
+        @Test
+        @DisplayName("메시지가 없으면 MESSAGE_NOT_FOUND 예외")
+        void 메시지_없음() {
+
+            given(messageRepository.findById(10L)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> messageService.deleteMessage(1L, 10L ,5L))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode").isEqualTo(ErrorCode.MESSAGE_NOT_FOUND);
+        }
+
+
+        @Test
+        @DisplayName("다른 방의 메시지면 MESSAGE_NOT_FOUND 예외")
+        void 다른_채팅방_메시지() {
+
+            given(messageRepository.findById(10L))
+                    .willReturn(Optional.of(messageFixture(10L, 1L, 5L, "Hi", "c1")));
+
+            assertThatThrownBy(() -> messageService.deleteMessage(2L, 10L ,5L))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode").isEqualTo(ErrorCode.MESSAGE_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("발신자가 아니면 NOT_MESSAGE_OWNER 예외")
+        void 발신자_아님() {
+
+            given(messageRepository.findById(10L))
+                    .willReturn(Optional.of(messageFixture(10L, 1L, 5L, "Hi", "c1")));
+
+            assertThatThrownBy(() -> messageService.deleteMessage(1L, 10L, 99L))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode").isEqualTo(ErrorCode.NOT_MESSAGE_OWNER);
+        }
+
+        @Test
+        @DisplayName("이미 삭제된 메시지면 아무 것도 하지 않는다(멱등)")
+        void 이미_삭제된_메시지_멱등() {
+
+            Message deleted = messageFixture(10L, 1L, 5L, "Hi", "c1");
+            ReflectionTestUtils.setField(deleted, "deletedAt", LocalDateTime.now());
+            given(messageRepository.findById(10L)).willReturn(Optional.of(deleted));
+
+            messageService.deleteMessage(1L, 10L, 5L);
+
+            then(messageRepository).should(never()).findTopByRoomIdAndDeletedAtIsNullOrderByIdDesc(any());
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }

@@ -20,12 +20,14 @@ public enum ErrorCode {
     NOT_COMMENT_OWNER(HttpStatus.FORBIDDEN, "not_comment_owner"),
     FORBIDDEN(HttpStatus.FORBIDDEN, "forbidden"),
     NOT_CHATROOM_MEMBER(HttpStatus.FORBIDDEN, "not_chatroom_member"),
+    NOT_MESSAGE_OWNER(HttpStatus.FORBIDDEN, "not_message_owner"),
 
     POST_NOT_FOUND(HttpStatus.NOT_FOUND, "post_not_found"),
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "comment_not_found"),
     IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "image_not_found"),
     PARTNER_NOT_FOUND(HttpStatus.NOT_FOUND, "partner_not_found"),
     CHATROOM_NOT_FOUND(HttpStatus.NOT_FOUND, "chatroom_not_found"),
+    MESSAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "message_not_found"),
 
     EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "email_already_exists"),
     NICKNAME_ALREADY_EXISTS(HttpStatus.CONFLICT, "nickname_already_exists"),

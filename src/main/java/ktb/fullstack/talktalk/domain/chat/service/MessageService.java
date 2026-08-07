@@ -2,6 +2,7 @@ package ktb.fullstack.talktalk.domain.chat.service;
 
 import ktb.fullstack.talktalk.domain.chat.dto.response.MessageListResponseDto;
 import ktb.fullstack.talktalk.domain.chat.dto.response.MessageResponseDto;
+import ktb.fullstack.talktalk.domain.chat.entity.ChatRoom;
 import ktb.fullstack.talktalk.domain.chat.entity.Message;
 import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomMemberRepository;
 import ktb.fullstack.talktalk.domain.chat.repository.MessageRepository;
@@ -59,6 +60,29 @@ public class MessageService {
                 .orElseGet(() -> saveOrRecover(roomId, senderId, content, clientMessageId));
 
         return MessageResponseDto.from(message);
+    }
+
+    @Transactional
+    public void deleteMessage(Long roomId, Long messageId, Long requesterId) {
+
+        Message message = messageRepository.findById(messageId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MESSAGE_NOT_FOUND));
+
+        if (!message.getRoom().getId().equals(roomId)) {
+            throw new BusinessException(ErrorCode.MESSAGE_NOT_FOUND);
+        }
+        if (!message.getSender().getId().equals(requesterId)) {
+            throw new BusinessException(ErrorCode.NOT_MESSAGE_OWNER);
+        }
+        if (message.isDeleted()) return;
+
+        message.softDelete();
+
+        ChatRoom room = message.getRoom();
+        if (messageId.equals(room.getLastMessageId())) {
+            Message latest = messageRepository.findTopByRoomIdAndDeletedAtIsNullOrderByIdDesc(roomId).orElse(null);
+            room.resetLastMessage(latest);
+        }
     }
 
     private Message saveOrRecover(Long roomId, Long senderId, String content, String clientMessageId) {

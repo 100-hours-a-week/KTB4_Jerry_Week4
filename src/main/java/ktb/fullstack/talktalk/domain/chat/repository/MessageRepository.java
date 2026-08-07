@@ -22,9 +22,11 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
 
     @Query("""
             select count(m) from Message m
-            where m.room.id = :roomId and m.sender.id <> :userId
+            where m.room.id = :roomId and m.sender.id <> :userId and m.deletedAt is null
                 and (:lastReadMessageId is null or m.id > :lastReadMessageId)
            """)
     long countUnread(@Param("roomId") Long roomId, @Param("userId") Long userId,
                      @Param("lastReadMessageId") Long lastReadMessageId);
+
+    Optional<Message> findTopByRoomIdAndDeletedAtIsNullOrderByIdDesc(Long roomId);
 }

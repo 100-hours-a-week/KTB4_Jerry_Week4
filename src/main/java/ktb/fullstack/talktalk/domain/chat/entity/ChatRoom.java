@@ -58,6 +58,19 @@ public class ChatRoom extends BaseTimeEntity {
         this.lastMessageAt = message.getCreatedAt();
     }
 
+    public void resetLastMessage(Message message) {
+
+        if (message == null) {
+            this.lastMessageId = null;
+            this.lastMessagePreview = null;
+            this.lastMessageAt = null;
+            return;
+        }
+        this.lastMessageId = message.getId();
+        this.lastMessagePreview = toPreview(message.getContent());
+        this.lastMessageAt = message.getCreatedAt();
+    }
+
     private static String toPreview(String content) {
 
         if (content == null) return null;

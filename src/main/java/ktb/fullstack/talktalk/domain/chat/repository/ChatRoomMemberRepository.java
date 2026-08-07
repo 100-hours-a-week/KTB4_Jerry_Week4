@@ -13,14 +13,6 @@ public interface ChatRoomMemberRepository extends JpaRepository<ChatRoomMember, 
 
     boolean existsByRoomIdAndUserId(Long roomId, Long userId);
 
-    @Query("""
-            select count(m) from Message m
-            where m.room.id = :roomId and m.sender.id <> :userId
-                and (:lastReadMessageId is null or m.id > :lastReadMessageId)
-           """)
-    long countUnread(@Param("roomId") Long roomId, @Param("userId") Long userId,
-                     @Param("lastReadMessageId") Long lastReadMessageId);
-
     Optional<ChatRoomMember> findByRoomIdAndUserId(Long roomId, Long userId);
 
     @Query("""
@@ -37,6 +29,7 @@ public interface ChatRoomMemberRepository extends JpaRepository<ChatRoomMember, 
             where mem.room.id = msg.room.id and mem.user.id = :userId
                 and mem.room.id in :roomIds
                 and msg.sender.id <> :userId
+                and msg.deletedAt is null
                 and (mem.lastReadMessageId is null or msg.id > mem.lastReadMessageId)
             group by msg.room.id
            """)

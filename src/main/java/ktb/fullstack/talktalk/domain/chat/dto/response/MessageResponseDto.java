@@ -10,6 +10,7 @@ public record MessageResponseDto(
         Long senderId,
         String content,
         String clientMessageId,
+        boolean deleted,
         LocalDateTime createdAt
 ) {
     public static MessageResponseDto from(Message message) {
@@ -18,8 +19,9 @@ public record MessageResponseDto(
                 message.getId(),
                 message.getRoom().getId(),
                 message.getSender().getId(),
-                message.getContent(),
+                message.isDeleted() ? null : message.getContent(),
                 message.getClientMessageId(),
+                message.isDeleted(),
                 message.getCreatedAt()
         );
     }

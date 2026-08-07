@@ -25,4 +25,14 @@ public class ChatMessageController {
         MessageListResponseDto result = messageService.getMessages(roomId, loginUser.userId(), cursor);
         return ResponseEntity.ok(ApiResponse.of("success", result));
     }
+
+    @DeleteMapping("/{messageId}")
+    public ResponseEntity<ApiResponse<Void>> deleteMessage(
+            @PathVariable Long roomId,
+            @PathVariable Long messageId,
+            @LoginUser LoginUserInfo loginUser) {
+
+        messageService.deleteMessage(roomId, messageId, loginUser.userId());
+        return ResponseEntity.ok(ApiResponse.of("success", null));
+    }
 }
