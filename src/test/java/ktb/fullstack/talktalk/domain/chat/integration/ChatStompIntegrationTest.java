@@ -220,4 +220,27 @@ public class ChatStompIntegrationTest {
         session.disconnect();
     }
 
+    @Test
+    @DisplayName("인증 실패로 STOMP 프레임이 거부되면 ERROR 프레임 message 헤더에 invalid_token가 담긴다")
+    void 인증_실패로_거부되면_ERROR_프레임_헤더에_코드가_담긴다() throws Exception {
+
+        BlockingQueue<StompHeaders> errorFrames = new LinkedBlockingQueue<>();
+        StompHeaders connectHeaders = new StompHeaders();
+        connectHeaders.add("Authorization", "Bearer invalid-token");
+
+        client().connectAsync(
+                "ws://localhost:" + port + "/ws",
+                new WebSocketHttpHeaders(),
+                connectHeaders,
+                new StompSessionHandlerAdapter() {
+                    @Override
+                    public void handleFrame(StompHeaders headers, @Nullable Object payload) {
+                        errorFrames.offer(headers);
+                    }
+                });
+
+        StompHeaders errorHeaders = errorFrames.poll(2, TimeUnit.SECONDS);
+        assertThat(errorHeaders).isNotNull();
+        assertThat(errorHeaders.getFirst("message")).isEqualTo(ErrorCode.INVALID_TOKEN.getMessage());
+    }
 }
