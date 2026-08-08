@@ -23,7 +23,7 @@ public class StompConfig implements WebSocketMessageBrokerConfigurer {
 
         registry.setErrorHandler(stompErrorHandler);
         registry.addEndpoint("/ws")
-                .setAllowedOrigins("http://localhost:5173", "http://127.0.0.1:5173");
+                .setAllowedOrigins("http://localhost:5173", "http://127.0.0.1:5173", "https://ktb-talktalk.site");
     }
 
     @Override
