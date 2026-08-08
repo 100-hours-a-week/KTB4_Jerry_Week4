@@ -3,6 +3,7 @@ package ktb.fullstack.talktalk.domain.chat.integration;
 import ktb.fullstack.talktalk.domain.auth.entity.Session;
 import ktb.fullstack.talktalk.domain.auth.repository.SessionRepository;
 import ktb.fullstack.talktalk.domain.chat.dto.request.ChatMessageSendRequestDto;
+import ktb.fullstack.talktalk.domain.chat.dto.response.ChatRoomEventDto;
 import ktb.fullstack.talktalk.domain.chat.dto.response.MessageErrorResponseDto;
 import ktb.fullstack.talktalk.domain.chat.dto.response.MessageResponseDto;
 import ktb.fullstack.talktalk.domain.chat.entity.ChatRoom;
@@ -62,6 +63,7 @@ public class ChatStompIntegrationTest {
     MessageRepository messageRepository;
 
     Long senderId;
+    Long partnerId;
     Long roomId;
     String token;
 
@@ -85,6 +87,7 @@ public class ChatStompIntegrationTest {
         chatRoomMemberRepository.save(new ChatRoomMember(room, other));
 
         senderId = one.getId();
+        partnerId = other.getId();
         roomId = room.getId();
         token = jwtProvider.generateAccessToken(one.getId(), session.getId());
     }
@@ -100,6 +103,20 @@ public class ChatStompIntegrationTest {
 
         StompHeaders connectHeaders = new StompHeaders();
         connectHeaders.add("Authorization", "Bearer " + token);
+
+        return client().connectAsync(
+                "ws://localhost:" + port + "/ws",
+                new WebSocketHttpHeaders(),
+                connectHeaders,
+                new StompSessionHandlerAdapter() {
+                }
+        ).get(1, TimeUnit.SECONDS);
+    }
+
+    private StompSession connectAs(String bearer) throws Exception {
+
+        StompHeaders connectHeaders = new StompHeaders();
+        connectHeaders.add("Authorization", "Bearer " + bearer);
 
         return client().connectAsync(
                 "ws://localhost:" + port + "/ws",
@@ -242,5 +259,32 @@ public class ChatStompIntegrationTest {
         StompHeaders errorHeaders = errorFrames.poll(2, TimeUnit.SECONDS);
         assertThat(errorHeaders).isNotNull();
         assertThat(errorHeaders.getFirst("message")).isEqualTo(ErrorCode.INVALID_TOKEN.getMessage());
+    }
+
+    @Test
+    @DisplayName("메시지를 보내면 상대방의 /user/queue/rooms로 채팅방 목록 갱신 이벤트가 도착한다")
+    void 채팅방_목록_실시간_이벤트_수신() throws Exception {
+
+        User partner = userRepository.findById(partnerId).orElseThrow();
+        Session partnerSession = sessionRepository.save(
+                new Session(partner, "refreshToken2", LocalDateTime.now().plusDays(1)));
+        String partnerToken = jwtProvider.generateAccessToken(partner.getId(), partnerSession.getId());
+
+        StompSession partnerStomp = connectAs(partnerToken);
+        BlockingQueue<ChatRoomEventDto> events =
+                subscribe(partnerStomp, "/user/queue/rooms", ChatRoomEventDto.class);
+
+        StompSession senderStomp = connect();
+        senderStomp.send("/app/chat/rooms/" + roomId,
+                new ChatMessageSendRequestDto("Hi", "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"));
+
+        ChatRoomEventDto event = events.poll(2, TimeUnit.SECONDS);
+        assertThat(event).isNotNull();
+        assertThat(event.roomId()).isEqualTo(roomId);
+        assertThat(event.partner().getId()).isEqualTo(senderId);
+        assertThat(event.lastMessagePreview()).isEqualTo("Hi");
+
+        partnerStomp.disconnect();
+        senderStomp.disconnect();
     }
 }
