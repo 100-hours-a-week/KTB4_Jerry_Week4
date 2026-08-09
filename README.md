@@ -32,7 +32,7 @@
 
 ## 서비스 시연 영상
 
-- `<!-- 시연 영상 링크(구글 드라이브 등) 채우기 -->`
+- https://drive.google.com/file/d/1kz3Y9RW7Cn0FyvuoRi0yQFOtiQ92q3GW/view?usp=drive_link
 
 ## 폴더 구조
 
