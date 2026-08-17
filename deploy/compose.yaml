@@ -3,8 +3,12 @@ x-backend: &backend
     - .env
   environment:
     SPRING_PROFILES_ACTIVE: prod
+    REDIS_HOST: redis
   stop_grace_period: 40s
   restart: unless-stopped
+  depends_on:
+    redis:
+      condition: service_healthy
   healthcheck:
     test: ["CMD", "bash", "-c", "echo > /dev/tcp/127.0.0.1/8080"]
     interval: 10s
@@ -31,6 +35,16 @@ services:
     volumes:
       - ./nginx/frontend.conf:/etc/nginx/nginx.conf:ro
       - ./fe-data:/srv/fe:ro
+    restart: unless-stopped
+
+  redis:
+    image: redis:alpine
+    command: redis-server --save "" --appendonly no
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     restart: unless-stopped
 
   backend-blue:

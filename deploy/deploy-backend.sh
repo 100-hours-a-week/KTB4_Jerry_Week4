@@ -21,6 +21,7 @@ else
   echo "${IDLE_UPPER}_TAG=${TAG}" >> "$ENV_FILE"
 fi
 
+docker compose up -d redis
 docker compose pull "backend-${IDLE}"
 docker compose up -d --no-deps "backend-$IDLE"
 

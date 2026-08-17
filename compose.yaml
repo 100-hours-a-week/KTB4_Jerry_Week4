@@ -1,17 +1,62 @@
+x-backend: &backend
+  build:
+    context: .
+  image: jerryhy/talktalk-backend:latest
+  env_file:
+    - .env
+  environment:
+    SPRING_PROFILES_ACTIVE: cluster
+    REDIS_HOST: redis
+  healthcheck:
+    test: [ "CMD", "bash", "-c", "echo > /dev/tcp/127.0.0.1/8080" ]
+    interval: 10s
+    timeout: 3s
+    retries: 5
+    start_period: 40s
+  restart: unless-stopped
+
 services:
-  backend:
-    build:
-      context: .
-    image: jerryhy/talktalk-backend:latest
-    env_file:
-      - .env
+  mysql:
+    image: mysql:8.4
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: talktalk
+      MYSQL_USER: talktalk
+      MYSQL_PASSWORD: talktalk
+    volumes:
+      - mysql-data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "bash", "-c", "echo > /dev/tcp/127.0.0.1/8080"]
-      interval: 10s
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
       timeout: 3s
-      retries: 5
-      start_period: 40s
+      retries: 20
+      start_period: 30s
     restart: unless-stopped
+
+  redis:
+    image: redis:alpine
+    command: redis-server --save "" --appendonly no
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    <<: *backend
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  backend2:
+    <<: *backend
+    depends_on:
+      mysql:
+        condition: service_healthy
 
   nginx:
     build:
@@ -23,3 +68,6 @@ services:
       backend:
         condition: service_healthy
     restart: unless-stopped
+
+volumes:
+  mysql-data:
