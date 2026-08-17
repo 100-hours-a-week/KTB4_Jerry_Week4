@@ -1,7 +1,7 @@
 name: BE CI/CD
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
 
 concurrency:
   group: be-deploy
@@ -27,6 +27,7 @@ jobs:
           push: true
           tags: |
             jerryhy/talktalk-backend:${{ github.sha }}
+            jerryhy/talktalk-backend:${{ github.ref_name }}
             jerryhy/talktalk-backend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
