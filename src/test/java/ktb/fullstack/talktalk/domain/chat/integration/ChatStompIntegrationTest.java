@@ -287,4 +287,54 @@ public class ChatStompIntegrationTest {
         partnerStomp.disconnect();
         senderStomp.disconnect();
     }
+
+    @Test
+    @DisplayName("[재현] 비멤버가 /topic/** 로 구독하면 남의 방 메시지가 그대로 전달된다")
+    void 와일드카드_도청_재현() throws Exception {
+
+        User outsider = userRepository.save(new User("outsider@aaa.aaa", "pw123!", "outsider"));
+        Session outsiderSession = sessionRepository.save(
+                new Session(outsider, "refreshToken3", LocalDateTime.now().plusDays(1)));
+        String outsiderToken = jwtProvider.generateAccessToken(outsider.getId(), outsiderSession.getId());
+
+
+        StompSession outsiderStomp = connectAs(outsiderToken);
+        BlockingQueue<MessageResponseDto> leaked = subscribe(outsiderStomp, "/topic/**", MessageResponseDto.class);
+
+        StompSession senderStomp = connect();
+        senderStomp.send("/app/chat/rooms/" + roomId, new ChatMessageSendRequestDto("secret", "ffffffff-ffff-ffff-ffff-ffffffffffff"));
+
+        MessageResponseDto eavesdropped = leaked.poll(2, TimeUnit.SECONDS);
+        assertThat(eavesdropped).isNotNull();
+        assertThat(eavesdropped.roomId()).isEqualTo(roomId);
+        assertThat(eavesdropped.content()).isEqualTo("secret");
+
+        outsiderStomp.disconnect();
+        senderStomp.disconnect();
+    }
+
+    @Test
+    @DisplayName("[재현] 비멤버가 /queue/** 로 구독하면 남의 ACK가 전달된다")
+    void 개인큐_와일드카드_도청_재현() throws Exception {
+
+        User outsider = userRepository.save(new User("outsider2@aaa.aaa", "pw123!", "outsider2"));
+        Session outsiderSession = sessionRepository.save(
+                new Session(outsider, "refreshToken4", LocalDateTime.now().plusDays(1)));
+        String outsiderToken = jwtProvider.generateAccessToken(outsider.getId(), outsiderSession.getId());
+
+        StompSession outsiderStomp = connectAs(outsiderToken);
+        BlockingQueue<MessageResponseDto> leaked =
+                subscribe(outsiderStomp, "/queue/**", MessageResponseDto.class);
+
+        StompSession senderStomp = connect();
+        senderStomp.send("/app/chat/rooms/" + roomId,
+                new ChatMessageSendRequestDto("secret ack", "99999999-9999-9999-9999-999999999999"));
+
+        MessageResponseDto eavesdropped = leaked.poll(2, TimeUnit.SECONDS);
+        assertThat(eavesdropped).isNotNull();
+        assertThat(eavesdropped.content()).isEqualTo("secret ack");
+
+        outsiderStomp.disconnect();
+        senderStomp.disconnect();
+    }
 }
