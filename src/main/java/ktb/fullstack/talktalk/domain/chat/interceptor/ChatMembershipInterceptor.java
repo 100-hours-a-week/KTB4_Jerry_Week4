@@ -15,6 +15,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
 import java.security.Principal;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -22,7 +23,9 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class ChatMembershipInterceptor implements ChannelInterceptor {
 
-    private static final Pattern ROOM_DESTINATION = Pattern.compile("/chat/rooms/(\\d+)");
+    private static final Pattern ROOM_TOPIC = Pattern.compile("/topic/chat/rooms/(\\d{1,18})");
+    private static final Pattern ROOM_APP = Pattern.compile("/app/chat/rooms/(\\d{1,18})");
+    private static final Set<String> PERSONAL_QUEUES = Set.of("/user/queue/acks", "/user/queue/errors", "/user/queue/rooms");
 
     private final ChatRoomMemberRepository chatRoomMemberRepository;
 
@@ -33,22 +36,50 @@ public class ChatMembershipInterceptor implements ChannelInterceptor {
         if (accessor == null) return message;
 
         StompCommand cmd = accessor.getCommand();
-        if (StompCommand.SUBSCRIBE.equals(cmd) || StompCommand.SEND.equals(cmd)) {
-            Long roomId = extractRoomId(accessor.getDestination());
-
-            if (roomId != null &&
-                    !chatRoomMemberRepository.existsByRoomIdAndUserId(roomId, currentUserId(accessor))) {
-                throw new BusinessException(ErrorCode.NOT_CHATROOM_MEMBER);
-            }
+        if (StompCommand.SUBSCRIBE.equals(cmd)) {
+            authorizeSubscribe(destination(accessor), accessor);
+        } else if (StompCommand.SEND.equals(cmd)) {
+            authorizeSend(destination(accessor), accessor);
         }
+
         return message;
     }
 
-    private Long extractRoomId(String destination) {
+    private void authorizeSubscribe(String destination, StompHeaderAccessor accessor) {
 
-        if (destination == null) return null;
-        Matcher matcher = ROOM_DESTINATION.matcher(destination);
-        return matcher.find() ? Long.parseLong(matcher.group(1)) : null;
+        if (PERSONAL_QUEUES.contains(destination)) return;
+
+        verifyMember(roomId(ROOM_TOPIC, destination), currentUserId(accessor));
+    }
+
+    private void authorizeSend(String destination, StompHeaderAccessor accessor) {
+
+        verifyMember(roomId(ROOM_APP, destination), currentUserId(accessor));
+    }
+
+    private String destination(StompHeaderAccessor accessor) {
+
+        String destination = accessor.getDestination();
+        if (destination == null) {
+            throw new BusinessException(ErrorCode.INVALID_DESTINATION);
+        }
+        return destination;
+    }
+
+    private void verifyMember(Long roomId, Long userId) {
+
+        if (!chatRoomMemberRepository.existsByRoomIdAndUserId(roomId, userId)) {
+            throw new BusinessException(ErrorCode.NOT_CHATROOM_MEMBER);
+        }
+    }
+
+    private Long roomId(Pattern pattern, String destination) {
+
+        Matcher matcher = pattern.matcher(destination);
+        if (!matcher.matches()) {
+            throw new BusinessException(ErrorCode.INVALID_DESTINATION);
+        }
+        return Long.parseLong(matcher.group(1));
     }
 
     private Long currentUserId(StompHeaderAccessor accessor) {

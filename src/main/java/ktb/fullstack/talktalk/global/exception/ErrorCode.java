@@ -21,6 +21,7 @@ public enum ErrorCode {
     FORBIDDEN(HttpStatus.FORBIDDEN, "forbidden"),
     NOT_CHATROOM_MEMBER(HttpStatus.FORBIDDEN, "not_chatroom_member"),
     NOT_MESSAGE_OWNER(HttpStatus.FORBIDDEN, "not_message_owner"),
+    INVALID_DESTINATION(HttpStatus.FORBIDDEN, "invalid_destination"),
 
     POST_NOT_FOUND(HttpStatus.NOT_FOUND, "post_not_found"),
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "comment_not_found"),

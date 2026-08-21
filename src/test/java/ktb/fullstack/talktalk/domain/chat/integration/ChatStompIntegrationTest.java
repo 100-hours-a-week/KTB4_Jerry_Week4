@@ -101,14 +101,23 @@ public class ChatStompIntegrationTest {
 
     private StompSession connect() throws Exception {
 
+        return connect(token, new LinkedBlockingQueue<>());
+    }
+
+    private StompSession connect(String bearer, BlockingQueue<StompHeaders> errorFrames) throws Exception {
+
         StompHeaders connectHeaders = new StompHeaders();
-        connectHeaders.add("Authorization", "Bearer " + token);
+        connectHeaders.add("Authorization", "Bearer " + bearer);
 
         return client().connectAsync(
                 "ws://localhost:" + port + "/ws",
                 new WebSocketHttpHeaders(),
                 connectHeaders,
                 new StompSessionHandlerAdapter() {
+                    @Override
+                    public void handleFrame(StompHeaders headers, @Nullable Object payload) {
+                        errorFrames.offer(headers);
+                    }
                 }
         ).get(1, TimeUnit.SECONDS);
     }
@@ -270,7 +279,7 @@ public class ChatStompIntegrationTest {
                 new Session(partner, "refreshToken2", LocalDateTime.now().plusDays(1)));
         String partnerToken = jwtProvider.generateAccessToken(partner.getId(), partnerSession.getId());
 
-        StompSession partnerStomp = connectAs(partnerToken);
+        StompSession partnerStomp = connect(partnerToken, new LinkedBlockingQueue<>());
         BlockingQueue<ChatRoomEventDto> events =
                 subscribe(partnerStomp, "/user/queue/rooms", ChatRoomEventDto.class);
 
@@ -289,52 +298,55 @@ public class ChatStompIntegrationTest {
     }
 
     @Test
-    @DisplayName("[재현] 비멤버가 /topic/** 로 구독하면 남의 방 메시지가 그대로 전달된다")
-    void 와일드카드_도청_재현() throws Exception {
+    @DisplayName("방 목적지 형식이 아닌 /topic/** 구독은 거부되고 남의 방 메시지도 전달되지 않는다")
+    void 와일드카드_토픽_구독_거부() throws Exception {
 
         User outsider = userRepository.save(new User("outsider@aaa.aaa", "pw123!", "outsider"));
         Session outsiderSession = sessionRepository.save(
                 new Session(outsider, "refreshToken3", LocalDateTime.now().plusDays(1)));
         String outsiderToken = jwtProvider.generateAccessToken(outsider.getId(), outsiderSession.getId());
 
-
-        StompSession outsiderStomp = connectAs(outsiderToken);
+        BlockingQueue<StompHeaders> errorFrames = new LinkedBlockingQueue<>();
+        StompSession outsiderStomp = connect(outsiderToken, errorFrames);
         BlockingQueue<MessageResponseDto> leaked = subscribe(outsiderStomp, "/topic/**", MessageResponseDto.class);
+
+        StompHeaders errorHeaders = errorFrames.poll(2, TimeUnit.SECONDS);
+        assertThat(errorHeaders).isNotNull();
+
+        assertThat(errorHeaders.getFirst("message")).isEqualTo(ErrorCode.INVALID_DESTINATION.getMessage());
 
         StompSession senderStomp = connect();
         senderStomp.send("/app/chat/rooms/" + roomId, new ChatMessageSendRequestDto("secret", "ffffffff-ffff-ffff-ffff-ffffffffffff"));
+        assertThat(leaked.poll(1, TimeUnit.SECONDS)).isNull();
 
-        MessageResponseDto eavesdropped = leaked.poll(2, TimeUnit.SECONDS);
-        assertThat(eavesdropped).isNotNull();
-        assertThat(eavesdropped.roomId()).isEqualTo(roomId);
-        assertThat(eavesdropped.content()).isEqualTo("secret");
-
-        outsiderStomp.disconnect();
         senderStomp.disconnect();
     }
 
     @Test
-    @DisplayName("[재현] 비멤버가 /queue/** 로 구독하면 남의 ACK가 전달된다")
-    void 개인큐_와일드카드_도청_재현() throws Exception {
+    @DisplayName("개인 큐 형식이 아닌 /queue/** 구독은 거부되고 남의 ACK도 전달되지 않는다")
+    void 와일드카드_큐_구독_거부() throws Exception {
 
         User outsider = userRepository.save(new User("outsider2@aaa.aaa", "pw123!", "outsider2"));
         Session outsiderSession = sessionRepository.save(
                 new Session(outsider, "refreshToken4", LocalDateTime.now().plusDays(1)));
         String outsiderToken = jwtProvider.generateAccessToken(outsider.getId(), outsiderSession.getId());
 
-        StompSession outsiderStomp = connectAs(outsiderToken);
+        BlockingQueue<StompHeaders> errorFrames = new LinkedBlockingQueue<>();
+        StompSession outsiderStomp = connect(outsiderToken, errorFrames);
         BlockingQueue<MessageResponseDto> leaked =
                 subscribe(outsiderStomp, "/queue/**", MessageResponseDto.class);
+
+        StompHeaders errorHeaders = errorFrames.poll(2, TimeUnit.SECONDS);
+        assertThat(errorHeaders).isNotNull();
+
+        assertThat(errorHeaders.getFirst("message")).isEqualTo(ErrorCode.INVALID_DESTINATION.getMessage());
 
         StompSession senderStomp = connect();
         senderStomp.send("/app/chat/rooms/" + roomId,
                 new ChatMessageSendRequestDto("secret ack", "99999999-9999-9999-9999-999999999999"));
 
-        MessageResponseDto eavesdropped = leaked.poll(2, TimeUnit.SECONDS);
-        assertThat(eavesdropped).isNotNull();
-        assertThat(eavesdropped.content()).isEqualTo("secret ack");
+        assertThat(leaked.poll(1, TimeUnit.SECONDS)).isNull();
 
-        outsiderStomp.disconnect();
         senderStomp.disconnect();
     }
 }

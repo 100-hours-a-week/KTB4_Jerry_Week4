@@ -8,6 +8,8 @@ import ktb.fullstack.talktalk.global.resolver.LoginUserInfo;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -59,6 +61,16 @@ public class ChatMembershipInterceptorTest {
     }
 
     @Test
+    @DisplayName("채팅방 멤버의 전송은 허용된다")
+    void 멤버_전송_허용() {
+
+        given(chatRoomMemberRepository.existsByRoomIdAndUserId(1L, 5L)).willReturn(true);
+        Message<byte[]> message = frame(StompCommand.SEND, "/app/chat/rooms/1", user(5L));
+
+        assertThatCode(() -> interceptor.preSend(message, null)).doesNotThrowAnyException();
+    }
+
+    @Test
     @DisplayName("채팅방 비멤버의 구독은 거부된다")
     void 비멤버_구독_거부() {
 
@@ -82,11 +94,61 @@ public class ChatMembershipInterceptorTest {
                 .extracting("errorCode").isEqualTo(ErrorCode.NOT_CHATROOM_MEMBER);
     }
 
-    @Test
-    @DisplayName("채팅방 목적지가 아니면 멤버십을 검사하지 않는다")
-    void 채팅방_목적지_아니면_멤버십_검사_통과() {
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {"/user/queue/acks", "/user/queue/errors", "/user/queue/rooms"})
+    @DisplayName("개인 큐 구독은 멤버십 검사 없이 허용된다")
+    void 개인_큐_구독_허용(String destination) {
 
-        Message<byte[]> message = frame(StompCommand.SUBSCRIBE, "/topic/other", user(5L));
+        Message<byte[]> message = frame(StompCommand.SUBSCRIBE, destination, user(5L));
+
+        assertThatCode(() -> interceptor.preSend(message, null)).doesNotThrowAnyException();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "/topic/**",
+            "/topic/other",
+            "/topic/chat/rooms/1/extra",
+            "/topic/evil/chat/rooms/1",
+            "/topic/chat/rooms/abc",
+            "/queue/**",
+            "/queue/acks-user",
+            "/user/queue/**",
+            "/app/chat/rooms/1"
+    })
+    @DisplayName("구독 대상 목적지 형식이 아닌 구독은 거부된다")
+    void 알_수_없는_목적지_구독_거부(String destination) {
+
+        Message<byte[]> message = frame(StompCommand.SUBSCRIBE, destination, user(5L));
+
+        assertThatThrownBy(() -> interceptor.preSend(message, null))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.INVALID_DESTINATION);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "/topic/chat/rooms/1",
+            "/app/chat/rooms/1/extra",
+            "/app/chat/rooms",
+            "/app/other",
+            "/user/queue/acks"
+    })
+    @DisplayName("메시지 전송 대상 목적지 형식이 아닌 전송은 거부된다")
+    void 알_수_없는_목적지_전송_거부(String destination) {
+
+        Message<byte[]> message = frame(StompCommand.SEND, destination, user(5L));
+
+        assertThatThrownBy(() -> interceptor.preSend(message, null))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.INVALID_DESTINATION);
+    }
+
+    @Test
+    @DisplayName("SUBSCRIBE, SEND가 아닌 프레임은 검사하지 않는다")
+    void 비대상_커맨드_통과() {
+
+        Message<byte[]> message = frame(StompCommand.UNSUBSCRIBE, "/topic/**", user(5L));
 
         assertThatCode(() -> interceptor.preSend(message, null)).doesNotThrowAnyException();
     }
