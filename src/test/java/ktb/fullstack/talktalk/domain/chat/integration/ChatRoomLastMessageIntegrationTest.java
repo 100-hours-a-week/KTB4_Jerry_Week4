@@ -56,7 +56,7 @@ public class ChatRoomLastMessageIntegrationTest {
     void 전송하면_마지막_메시지_갱신() {
 
         messageService.send(roomId, meId, "first", "c1");
-        MessageResponseDto second = messageService.send(roomId, meId, "Second Message", "c2");
+        MessageResponseDto second = messageService.send(roomId, meId, "Second Message", "c2").message();
 
         ChatRoom room = chatRoomRepository.findById(roomId).orElseThrow();
         assertThat(room.getLastMessageId()).isEqualTo(second.messageId());
@@ -68,7 +68,7 @@ public class ChatRoomLastMessageIntegrationTest {
     @DisplayName("같은 clientMessageId 재전송은 마지막 메시지를 중복 갱신하지 않는다")
     void 재전송_마지막_메시지_멱등() {
 
-        MessageResponseDto first = messageService.send(roomId, meId, "same", "c1");
+        MessageResponseDto first = messageService.send(roomId, meId, "same", "c1").message();
         messageService.send(roomId, meId, "same", "c1");
 
         ChatRoom room = chatRoomRepository.findById(roomId).orElseThrow();

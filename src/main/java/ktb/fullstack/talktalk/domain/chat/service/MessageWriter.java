@@ -27,6 +27,7 @@ public class MessageWriter {
         ChatRoom room = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CHATROOM_NOT_FOUND));
         User sender = userRepository.findById(senderId)
+                .filter(user -> user.getDeletedAt() == null)
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_TOKEN));
 
         Message message = messageRepository.save(new Message(room, sender, content, clientMessageId));

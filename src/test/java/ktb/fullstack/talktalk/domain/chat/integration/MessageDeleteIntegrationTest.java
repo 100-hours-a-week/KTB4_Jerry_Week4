@@ -63,7 +63,7 @@ public class MessageDeleteIntegrationTest {
 
     private Long send(Long senderId, String content, String cid) {
 
-        return messageService.send(roomId, senderId, content, cid).messageId();
+        return messageService.send(roomId, senderId, content, cid).message().messageId();
     }
 
     @Test

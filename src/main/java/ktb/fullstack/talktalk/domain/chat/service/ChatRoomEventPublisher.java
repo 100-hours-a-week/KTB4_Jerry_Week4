@@ -21,22 +21,21 @@ public class ChatRoomEventPublisher {
     private final ChatRoomMemberRepository chatRoomMemberRepository;
     private final WriterResolver writerResolver;
 
-    public void publishNewMessage(Long roomId, Long senderId, String preview, LocalDateTime sendAt) {
+    public void publishNewMessage(Long roomId, Long senderId, WriterDto sender, String preview, LocalDateTime sendAt) {
 
-        publish(roomId, senderId, preview, sendAt, ChatRoomEventType.MESSAGE);
+        publish(roomId, senderId, sender, preview, sendAt, ChatRoomEventType.MESSAGE);
     }
 
     public void publishMessageDeleted(Long roomId, Long actorId, String preview, LocalDateTime lastMessageAt) {
 
-        publish(roomId, actorId, preview, lastMessageAt, ChatRoomEventType.DELETED);
+        publish(roomId, actorId, writerResolver.resolveWriter(actorId), preview, lastMessageAt, ChatRoomEventType.DELETED);
     }
 
-    private void publish(Long roomId, Long actorId, String preview, LocalDateTime lastMessageAt, ChatRoomEventType type) {
+    private void publish(Long roomId, Long actorId, WriterDto actor, String preview, LocalDateTime lastMessageAt, ChatRoomEventType type) {
 
-        WriterDto sender = writerResolver.resolveWriter(actorId);
         List<RoomPartnerProjection> recipients = chatRoomMemberRepository.findPartners(List.of(roomId), actorId);
         for (RoomPartnerProjection recipient : recipients) {
-            ChatRoomEventDto event = new ChatRoomEventDto(roomId, sender, preview, lastMessageAt, type);
+            ChatRoomEventDto event = new ChatRoomEventDto(roomId, actor, preview, lastMessageAt, type);
             chatFanoutPublisher.publishRoomEvent(recipient.getPartnerId(), event);
         }
     }

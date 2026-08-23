@@ -3,10 +3,12 @@ package ktb.fullstack.talktalk.domain.chat.service;
 import ktb.fullstack.talktalk.domain.chat.dto.response.MessageDeleteResult;
 import ktb.fullstack.talktalk.domain.chat.dto.response.MessageListResponseDto;
 import ktb.fullstack.talktalk.domain.chat.dto.response.MessageResponseDto;
+import ktb.fullstack.talktalk.domain.chat.dto.response.MessageSendResult;
 import ktb.fullstack.talktalk.domain.chat.entity.ChatRoom;
 import ktb.fullstack.talktalk.domain.chat.entity.Message;
 import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomMemberRepository;
 import ktb.fullstack.talktalk.domain.chat.repository.MessageRepository;
+import ktb.fullstack.talktalk.domain.user.service.WriterResolver;
 import ktb.fullstack.talktalk.global.common.response.CursorPageResponse;
 import ktb.fullstack.talktalk.global.exception.BusinessException;
 import ktb.fullstack.talktalk.global.exception.ErrorCode;
@@ -28,6 +30,7 @@ public class MessageService {
     private final MessageRepository messageRepository;
     private final MessageWriter messageWriter;
     private final ChatRoomMemberRepository chatRoomMemberRepository;
+    private final WriterResolver writerResolver;
 
     @Transactional(readOnly = true)
     public MessageListResponseDto getMessages(Long roomId, Long requesterId, Long cursor) {
@@ -47,7 +50,7 @@ public class MessageService {
         return new MessageListResponseDto(new CursorPageResponse<>(items, nextCursor));
     }
 
-    public MessageResponseDto send(Long roomId, Long senderId, String content, String clientMessageId) {
+    public MessageSendResult send(Long roomId, Long senderId, String content, String clientMessageId) {
 
         if (content == null || content.isBlank()) {
             throw new BusinessException(ErrorCode.EMPTY_MESSAGE);
@@ -65,7 +68,9 @@ public class MessageService {
                 .findByRoomIdAndSenderIdAndClientMessageId(roomId, senderId, clientMessageId)
                 .orElseGet(() -> saveOrRecover(roomId, senderId, content, clientMessageId));
 
-        return MessageResponseDto.from(message);
+        return new MessageSendResult(
+                MessageResponseDto.from(message),
+                writerResolver.resolveWriter(message.getSender()));
     }
 
     @Transactional

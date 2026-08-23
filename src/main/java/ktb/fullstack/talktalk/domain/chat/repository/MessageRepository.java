@@ -12,7 +12,15 @@ import java.util.Optional;
 
 public interface MessageRepository extends JpaRepository<Message, Long> {
 
-    Optional<Message> findByRoomIdAndSenderIdAndClientMessageId(Long roomId, Long senderId, String clientMessageId);
+    @Query("""
+            select m from Message m
+            join fetch m.sender
+            where m.room.id = :roomId and m.sender.id = :senderId
+                and m.clientMessageId = :clientMessageId
+           """)
+    Optional<Message> findByRoomIdAndSenderIdAndClientMessageId(@Param("roomId") Long roomId,
+                                                                @Param("senderId") Long senderId,
+                                                                @Param("clientMessageId") String clientMessageId);
 
     @Query("""
             select m from Message m

@@ -38,6 +38,18 @@ public class WriterResolver {
                 .orElse(UNKNOWN_WRITER);
     }
 
+    public WriterDto resolveWriter(User user) {
+
+        if (user == null || user.getDeletedAt() != null) return UNKNOWN_WRITER;
+
+        return new WriterDto(
+                user.getId(),
+                user.getNickname(),
+                profileImageRepository.findByUserIdAndCurrentTrue(user.getId())
+                        .map(pi -> IMAGE_URL_PREFIX + pi.getImage().getFileName())
+                        .orElse(null));
+    }
+
     @Transactional(readOnly = true)
     public Map<Long, WriterDto> resolveWriters(List<Long> userIds) {
 

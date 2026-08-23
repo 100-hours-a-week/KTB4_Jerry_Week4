@@ -10,6 +10,7 @@ import ktb.fullstack.talktalk.domain.chat.repository.MessageRepository;
 import ktb.fullstack.talktalk.domain.chat.service.MessageService;
 import ktb.fullstack.talktalk.domain.chat.service.MessageWriter;
 import ktb.fullstack.talktalk.domain.user.entity.User;
+import ktb.fullstack.talktalk.domain.user.service.WriterResolver;
 import ktb.fullstack.talktalk.global.exception.BusinessException;
 import ktb.fullstack.talktalk.global.exception.ErrorCode;
 import org.junit.jupiter.api.DisplayName;
@@ -45,6 +46,9 @@ public class MessageServiceTest {
 
     @Mock
     ChatRoomMemberRepository chatRoomMemberRepository;
+
+    @Mock
+    WriterResolver writerResolver;
 
     @InjectMocks
     MessageService messageService;
@@ -86,7 +90,7 @@ public class MessageServiceTest {
             given(messageWriter.write(1L, 5L, "Hi\nJerry", CLIENT_MESSAGE_ID)).willReturn(messageFixture(10L, 1L, 5L, "Hi\nJerry", CLIENT_MESSAGE_ID));
 
             MessageResponseDto result =
-                    messageService.send(1L, 5L, "Hi\nJerry", CLIENT_MESSAGE_ID);
+                    messageService.send(1L, 5L, "Hi\nJerry", CLIENT_MESSAGE_ID).message();
 
             assertThat(result.messageId()).isEqualTo(10L);
             assertThat(result.roomId()).isEqualTo(1L);
@@ -108,7 +112,7 @@ public class MessageServiceTest {
                     .willReturn(Optional.of(messageFixture(10L, 1L, 5L, "Hi", CLIENT_MESSAGE_ID)));
 
             MessageResponseDto result =
-                    messageService.send(1L, 5L, "Hi", CLIENT_MESSAGE_ID);
+                    messageService.send(1L, 5L, "Hi", CLIENT_MESSAGE_ID).message();
 
             assertThat(result.messageId()).isEqualTo(10L);
             then(messageWriter).should(never()).write(any(), any(), any(), any());
@@ -124,7 +128,7 @@ public class MessageServiceTest {
             given(messageWriter.write(1L, 5L, "Hi", CLIENT_MESSAGE_ID)).willThrow(new DataIntegrityViolationException("unique violation"));
 
             MessageResponseDto result =
-                    messageService.send(1L, 5L, "Hi", CLIENT_MESSAGE_ID);
+                    messageService.send(1L, 5L, "Hi", CLIENT_MESSAGE_ID).message();
 
             assertThat(result.messageId()).isEqualTo(10L);
         }

@@ -3,6 +3,7 @@ package ktb.fullstack.talktalk.domain.chat.controller;
 import ktb.fullstack.talktalk.domain.chat.dto.request.ChatMessageSendRequestDto;
 import ktb.fullstack.talktalk.domain.chat.dto.response.MessageErrorResponseDto;
 import ktb.fullstack.talktalk.domain.chat.dto.response.MessageResponseDto;
+import ktb.fullstack.talktalk.domain.chat.dto.response.MessageSendResult;
 import ktb.fullstack.talktalk.domain.chat.fanout.ChatFanoutPublisher;
 import ktb.fullstack.talktalk.domain.chat.service.ChatRoomEventPublisher;
 import ktb.fullstack.talktalk.domain.chat.service.MessageService;
@@ -35,10 +36,10 @@ public class ChatController {
             Principal principal) {
 
         LoginUserInfo sender = (LoginUserInfo) ((Authentication) principal).getPrincipal();
-        MessageResponseDto result = messageService.send(roomId, sender.userId(), request.content(), request.clientMessageId());
-        chatFanoutPublisher.publishRoomMessage(roomId, result);
-        chatRoomEventPublisher.publishNewMessage(roomId, sender.userId(), result.content(), result.createdAt());
-        return result;
+        MessageSendResult result = messageService.send(roomId, sender.userId(), request.content(), request.clientMessageId());
+        chatFanoutPublisher.publishRoomMessage(roomId, result.message());
+        chatRoomEventPublisher.publishNewMessage(roomId, sender.userId(), result.sender(), result.message().content(), result.message().createdAt());
+        return result.message();
     }
 
     @MessageExceptionHandler(BusinessException.class)
