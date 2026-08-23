@@ -10,6 +10,7 @@ import ktb.fullstack.talktalk.global.exception.BusinessException;
 import ktb.fullstack.talktalk.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
@@ -20,7 +21,7 @@ public class MessageWriter {
     private final UserRepository userRepository;
     private final MessageRepository messageRepository;
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Message write(Long roomId, Long senderId, String content, String clientMessageId) {
 
         ChatRoom room = chatRoomRepository.findById(roomId)

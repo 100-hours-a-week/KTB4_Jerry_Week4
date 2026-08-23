@@ -12,6 +12,7 @@ public enum ErrorCode {
     CANNOT_CHAT_ALONE(HttpStatus.BAD_REQUEST, "cannot_chat_alone"),
     EMPTY_MESSAGE(HttpStatus.BAD_REQUEST, "empty_message"),
     EMPTY_CLIENT_MESSAGE_ID(HttpStatus.BAD_REQUEST, "empty_client_message_id"),
+    TOO_LONG_MESSAGE(HttpStatus.BAD_REQUEST, "too_long_message"),
 
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "invalid_credentials"),
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "invalid_token"),

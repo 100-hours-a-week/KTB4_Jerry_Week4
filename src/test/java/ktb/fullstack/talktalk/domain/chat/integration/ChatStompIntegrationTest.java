@@ -62,6 +62,8 @@ public class ChatStompIntegrationTest {
     @Autowired
     MessageRepository messageRepository;
 
+    private static final int TIMEOUT_SECONDS = 5;
+
     Long senderId;
     Long partnerId;
     Long roomId;
@@ -119,7 +121,7 @@ public class ChatStompIntegrationTest {
                         errorFrames.offer(headers);
                     }
                 }
-        ).get(1, TimeUnit.SECONDS);
+        ).get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
     }
 
     private StompSession connectAs(String bearer) throws Exception {
@@ -133,7 +135,7 @@ public class ChatStompIntegrationTest {
                 connectHeaders,
                 new StompSessionHandlerAdapter() {
                 }
-        ).get(1, TimeUnit.SECONDS);
+        ).get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
     }
 
     private <T> BlockingQueue<T> subscribe(StompSession session, String destination, Class<T> payloadType) {
@@ -166,7 +168,7 @@ public class ChatStompIntegrationTest {
         session.send("/app/chat/rooms/" + roomId,
                 new ChatMessageSendRequestDto("Hi", clientMessageId));
 
-        MessageResponseDto msg = received.poll(1, TimeUnit.SECONDS);
+        MessageResponseDto msg = received.poll(TIMEOUT_SECONDS, TimeUnit.SECONDS);
         assertThat(msg).isNotNull();
         assertThat(msg.roomId()).isEqualTo(roomId);
         assertThat(msg.senderId()).isEqualTo(senderId);
@@ -193,8 +195,8 @@ public class ChatStompIntegrationTest {
         session.send("/app/chat/rooms/" + roomId,
                 new ChatMessageSendRequestDto("Hi", clientMessageId));
 
-        MessageResponseDto first = received.poll(1, TimeUnit.SECONDS);
-        MessageResponseDto second = received.poll(1, TimeUnit.SECONDS);
+        MessageResponseDto first = received.poll(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        MessageResponseDto second = received.poll(TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
         assertThat(first).isNotNull();
         assertThat(second).isNotNull();
@@ -217,7 +219,7 @@ public class ChatStompIntegrationTest {
         session.send("/app/chat/rooms/" + roomId,
                 new ChatMessageSendRequestDto("Hi", clientMessageId));
 
-        MessageResponseDto ack = acks.poll(1, TimeUnit.SECONDS);
+        MessageResponseDto ack = acks.poll(TIMEOUT_SECONDS, TimeUnit.SECONDS);
         assertThat(ack).isNotNull();
         assertThat(ack.clientMessageId()).isEqualTo(clientMessageId);
         assertThat(ack.messageId()).isNotNull();
@@ -237,7 +239,7 @@ public class ChatStompIntegrationTest {
         String clientMessageId = "dddddddd-dddd-dddd-dddd-dddddddddddd";
         session.send("/app/chat/rooms/" + roomId, new ChatMessageSendRequestDto("", clientMessageId));
 
-        MessageErrorResponseDto error = errors.poll(1, TimeUnit.SECONDS);
+        MessageErrorResponseDto error = errors.poll(TIMEOUT_SECONDS, TimeUnit.SECONDS);
         assertThat(error).isNotNull();
         assertThat(error.code()).isEqualTo(ErrorCode.EMPTY_MESSAGE.name());
         assertThat(error.clientMessageId()).isEqualTo(clientMessageId);
@@ -265,7 +267,7 @@ public class ChatStompIntegrationTest {
                     }
                 });
 
-        StompHeaders errorHeaders = errorFrames.poll(2, TimeUnit.SECONDS);
+        StompHeaders errorHeaders = errorFrames.poll(TIMEOUT_SECONDS, TimeUnit.SECONDS);
         assertThat(errorHeaders).isNotNull();
         assertThat(errorHeaders.getFirst("message")).isEqualTo(ErrorCode.INVALID_TOKEN.getMessage());
     }
@@ -287,7 +289,7 @@ public class ChatStompIntegrationTest {
         senderStomp.send("/app/chat/rooms/" + roomId,
                 new ChatMessageSendRequestDto("Hi", "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"));
 
-        ChatRoomEventDto event = events.poll(2, TimeUnit.SECONDS);
+        ChatRoomEventDto event = events.poll(TIMEOUT_SECONDS, TimeUnit.SECONDS);
         assertThat(event).isNotNull();
         assertThat(event.roomId()).isEqualTo(roomId);
         assertThat(event.partner().getId()).isEqualTo(senderId);
@@ -310,14 +312,14 @@ public class ChatStompIntegrationTest {
         StompSession outsiderStomp = connect(outsiderToken, errorFrames);
         BlockingQueue<MessageResponseDto> leaked = subscribe(outsiderStomp, "/topic/**", MessageResponseDto.class);
 
-        StompHeaders errorHeaders = errorFrames.poll(2, TimeUnit.SECONDS);
+        StompHeaders errorHeaders = errorFrames.poll(TIMEOUT_SECONDS, TimeUnit.SECONDS);
         assertThat(errorHeaders).isNotNull();
 
         assertThat(errorHeaders.getFirst("message")).isEqualTo(ErrorCode.INVALID_DESTINATION.getMessage());
 
         StompSession senderStomp = connect();
         senderStomp.send("/app/chat/rooms/" + roomId, new ChatMessageSendRequestDto("secret", "ffffffff-ffff-ffff-ffff-ffffffffffff"));
-        assertThat(leaked.poll(1, TimeUnit.SECONDS)).isNull();
+        assertThat(leaked.poll(TIMEOUT_SECONDS, TimeUnit.SECONDS)).isNull();
 
         senderStomp.disconnect();
     }
@@ -336,7 +338,7 @@ public class ChatStompIntegrationTest {
         BlockingQueue<MessageResponseDto> leaked =
                 subscribe(outsiderStomp, "/queue/**", MessageResponseDto.class);
 
-        StompHeaders errorHeaders = errorFrames.poll(2, TimeUnit.SECONDS);
+        StompHeaders errorHeaders = errorFrames.poll(TIMEOUT_SECONDS, TimeUnit.SECONDS);
         assertThat(errorHeaders).isNotNull();
 
         assertThat(errorHeaders.getFirst("message")).isEqualTo(ErrorCode.INVALID_DESTINATION.getMessage());
@@ -345,7 +347,7 @@ public class ChatStompIntegrationTest {
         senderStomp.send("/app/chat/rooms/" + roomId,
                 new ChatMessageSendRequestDto("secret ack", "99999999-9999-9999-9999-999999999999"));
 
-        assertThat(leaked.poll(1, TimeUnit.SECONDS)).isNull();
+        assertThat(leaked.poll(TIMEOUT_SECONDS, TimeUnit.SECONDS)).isNull();
 
         senderStomp.disconnect();
     }

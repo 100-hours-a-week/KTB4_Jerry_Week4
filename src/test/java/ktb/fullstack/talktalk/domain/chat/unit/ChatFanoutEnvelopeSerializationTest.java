@@ -1,6 +1,7 @@
 package ktb.fullstack.talktalk.domain.chat.unit;
 
 import ktb.fullstack.talktalk.domain.chat.dto.response.ChatRoomEventDto;
+import ktb.fullstack.talktalk.domain.chat.dto.response.ChatRoomEventType;
 import ktb.fullstack.talktalk.domain.chat.dto.response.MessageResponseDto;
 import ktb.fullstack.talktalk.domain.chat.fanout.RoomEventEnvelope;
 import ktb.fullstack.talktalk.domain.chat.fanout.RoomMessageEnvelope;
@@ -57,7 +58,7 @@ public class ChatFanoutEnvelopeSerializationTest {
         void 왕복해도_값_보존() {
 
             WriterDto partner = new WriterDto(3L, "jerry", "/images/a.png");
-            RoomEventEnvelope given = new RoomEventEnvelope(17L, new ChatRoomEventDto(42L, partner, "Hi", SENT_AT));
+            RoomEventEnvelope given = new RoomEventEnvelope(17L, new ChatRoomEventDto(42L, partner, "Hi", SENT_AT, ChatRoomEventType.MESSAGE));
 
             RoomEventEnvelope actual = serializer.deserialize(serializer.serialize(given));
 
@@ -69,7 +70,7 @@ public class ChatFanoutEnvelopeSerializationTest {
             assertThat(actual.payload().partner().getProfileImageUrl()).isEqualTo("/images/a.png");
             assertThat(actual.payload().lastMessagePreview()).isEqualTo("Hi");
             assertThat(actual.payload().lastMessageAt()).isEqualTo(SENT_AT);
+            assertThat(actual.payload().type()).isEqualTo(ChatRoomEventType.MESSAGE);
         }
     }
-
 }

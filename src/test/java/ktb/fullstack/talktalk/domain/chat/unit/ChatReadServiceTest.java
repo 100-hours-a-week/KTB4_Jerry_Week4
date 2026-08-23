@@ -1,5 +1,6 @@
 package ktb.fullstack.talktalk.domain.chat.unit;
 
+import ktb.fullstack.talktalk.domain.chat.entity.ChatRoomMember;
 import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomMemberRepository;
 import ktb.fullstack.talktalk.domain.chat.repository.MessageRepository;
 import ktb.fullstack.talktalk.domain.chat.service.ChatReadService;
@@ -14,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 
@@ -49,5 +51,19 @@ public class ChatReadServiceTest {
         assertThatThrownBy(() -> chatReadService.getUnreadCount(1L, 5L))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.NOT_CHATROOM_MEMBER);
+    }
+
+    @Test
+    @DisplayName("markRead - 채팅방에 없는 메시지 id면 MESSAGE_NOT_FOUND 예외")
+    void markRead_없는_메시지_거부() {
+
+        ChatRoomMember member = new ChatRoomMember(null, null);
+        given(chatRoomMemberRepository.findByRoomIdAndUserId(1L, 5L)).willReturn(Optional.of(member));
+        given(messageRepository.existsByIdAndRoomId(999999L, 1L)).willReturn(false);
+
+        assertThatThrownBy(() -> chatReadService.markRead(1L, 5L, 999999L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.MESSAGE_NOT_FOUND);
+        assertThat(member.getLastReadMessageId()).isNull();
     }
 }

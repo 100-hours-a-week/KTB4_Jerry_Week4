@@ -1,6 +1,9 @@
 package ktb.fullstack.talktalk.domain.chat.controller;
 
+import ktb.fullstack.talktalk.domain.chat.dto.response.MessageDeleteResult;
 import ktb.fullstack.talktalk.domain.chat.dto.response.MessageListResponseDto;
+import ktb.fullstack.talktalk.domain.chat.fanout.ChatFanoutPublisher;
+import ktb.fullstack.talktalk.domain.chat.service.ChatRoomEventPublisher;
 import ktb.fullstack.talktalk.domain.chat.service.MessageService;
 import ktb.fullstack.talktalk.global.common.response.ApiResponse;
 import ktb.fullstack.talktalk.global.resolver.LoginUser;
@@ -15,6 +18,8 @@ import org.springframework.web.bind.annotation.*;
 public class ChatMessageController {
 
     private final MessageService messageService;
+    private final ChatRoomEventPublisher chatRoomEventPublisher;
+    private final ChatFanoutPublisher chatFanoutPublisher;
 
     @GetMapping
     public ResponseEntity<ApiResponse<MessageListResponseDto>> getMessages(
@@ -32,7 +37,11 @@ public class ChatMessageController {
             @PathVariable Long messageId,
             @LoginUser LoginUserInfo loginUser) {
 
-        messageService.deleteMessage(roomId, messageId, loginUser.userId());
+        MessageDeleteResult result = messageService.deleteMessage(roomId, messageId, loginUser.userId());
+        chatFanoutPublisher.publishRoomMessage(roomId, result.message());
+        if (result.lastMessageChanged()) {
+            chatRoomEventPublisher.publishMessageDeleted(roomId, loginUser.userId(), result.lastMessagePreview(), result.lastMessageAt());
+        }
         return ResponseEntity.ok(ApiResponse.of("success", null));
     }
 }

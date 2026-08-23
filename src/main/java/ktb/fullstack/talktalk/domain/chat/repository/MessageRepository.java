@@ -1,5 +1,6 @@
 package ktb.fullstack.talktalk.domain.chat.repository;
 
+import ktb.fullstack.talktalk.domain.chat.entity.ChatRoom;
 import ktb.fullstack.talktalk.domain.chat.entity.Message;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -29,4 +30,6 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
                      @Param("lastReadMessageId") Long lastReadMessageId);
 
     Optional<Message> findTopByRoomIdAndDeletedAtIsNullOrderByIdDesc(Long roomId);
+
+    boolean existsByIdAndRoomId(Long id, Long roomId);
 }

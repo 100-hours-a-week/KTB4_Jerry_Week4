@@ -8,6 +8,7 @@ public record ChatRoomEventDto(
         Long roomId,
         WriterDto partner,
         String lastMessagePreview,
-        LocalDateTime lastMessageAt
+        LocalDateTime lastMessageAt,
+        ChatRoomEventType type
 ) {
 }

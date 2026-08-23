@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
@@ -86,5 +87,20 @@ public class ChatRoomCreatorTest {
         assertThatThrownBy(() -> chatRoomCreator.create("1:99", 1L, 99L))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.PARTNER_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("상대방이 탈퇴한 회원이면 PARTNER_NOT_FOUND 예외")
+    void 상대방_탈퇴() {
+
+        User withdrawn = userFixture(99L);
+        withdrawn.softDelete();
+        given(userRepository.findById(1L)).willReturn(Optional.of(userFixture(1L)));
+        given(userRepository.findById(99L)).willReturn(Optional.of(withdrawn));
+
+        assertThatThrownBy(() -> chatRoomCreator.create("1:99", 1L, 99L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.PARTNER_NOT_FOUND);
+        then(chatRoomRepository).should(never()).save(any());
     }
 }

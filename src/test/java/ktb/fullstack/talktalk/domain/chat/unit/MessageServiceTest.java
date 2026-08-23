@@ -1,5 +1,6 @@
 package ktb.fullstack.talktalk.domain.chat.unit;
 
+import ktb.fullstack.talktalk.domain.chat.dto.response.MessageDeleteResult;
 import ktb.fullstack.talktalk.domain.chat.dto.response.MessageListResponseDto;
 import ktb.fullstack.talktalk.domain.chat.dto.response.MessageResponseDto;
 import ktb.fullstack.talktalk.domain.chat.entity.ChatRoom;
@@ -145,6 +146,28 @@ public class MessageServiceTest {
         }
 
         @Test
+        @DisplayName("공백만 있는 메시지는 거부한다")
+        void 공백_메시지() {
+
+            assertThatThrownBy(() -> messageService.send(1L, 5L, "  \n", CLIENT_MESSAGE_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode").isEqualTo(ErrorCode.EMPTY_MESSAGE);
+            then(messageWriter).should(never()).write(any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("상한을 넘는 메시지는 저장 전에 거부한다")
+        void 너무_긴_메시지() {
+
+            String tooLong = "가".repeat(2001);
+
+            assertThatThrownBy(() -> messageService.send(1L, 5L, tooLong, CLIENT_MESSAGE_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode").isEqualTo(ErrorCode.TOO_LONG_MESSAGE);
+            then(messageWriter).should(never()).write(any(), any(), any(), any());
+        }
+
+        @Test
         @DisplayName("clientMessageId가 없으면 거부한다")
         void 빈_클라이언트ID() {
 
@@ -263,35 +286,59 @@ public class MessageServiceTest {
 
             then(messageRepository).should(never()).findTopByRoomIdAndDeletedAtIsNullOrderByIdDesc(any());
         }
+
+        @Test
+        @DisplayName("마지막 메시지를 삭제하면 직전 메시지가 새 미리보기가 된다")
+        void 마지막_삭제하면_직전_메시지로_교체() {
+
+            Message message = messageFixture(10L, 1L, 5L, "Hi", "c1");
+            ReflectionTestUtils.setField(message.getRoom(), "lastMessageId", 10L);
+            Message previous = messageFixture(9L, 1L, 5L, "직전 메시지", "c0");
+            given(messageRepository.findById(10L)).willReturn(Optional.of(message));
+            given(messageRepository.findTopByRoomIdAndDeletedAtIsNullOrderByIdDesc(1L))
+                    .willReturn(Optional.of(previous));
+
+            MessageDeleteResult result = messageService.deleteMessage(1L, 10L, 5L);
+
+            assertThat(result.lastMessageChanged()).isTrue();
+            assertThat(result.lastMessagePreview()).isEqualTo("직전 메시지");
+            assertThat(result.lastMessageAt()).isEqualTo(previous.getCreatedAt());
+            assertThat(result.message().messageId()).isEqualTo(10L);
+            assertThat(result.message().deleted()).isTrue();
+            assertThat(result.message().content()).isNull();
+        }
+
+        @Test
+        @DisplayName("마지막 메시지를 삭제해 방이 비면 미리보기가 사라진다")
+        void 마지막_삭제하면_미리보기_비움() {
+
+            Message message = messageFixture(10L, 1L, 5L, "Hi", "c1");
+            ReflectionTestUtils.setField(message.getRoom(), "lastMessageId", 10L);
+            given(messageRepository.findById(10L)).willReturn(Optional.of(message));
+            given(messageRepository.findTopByRoomIdAndDeletedAtIsNullOrderByIdDesc(1L))
+                    .willReturn(Optional.empty());
+
+            MessageDeleteResult result = messageService.deleteMessage(1L, 10L, 5L);
+
+            assertThat(result.lastMessageChanged()).isTrue();
+            assertThat(result.lastMessagePreview()).isNull();
+            assertThat(result.lastMessageAt()).isNull();
+        }
+
+        @Test
+        @DisplayName("마지막이 아닌 메시지를 삭제하면 마지막 메시지를 조회하지 않는다")
+        void 중간_삭제하면_재조회_없음() {
+
+            Message message = messageFixture(10L, 1L, 5L, "Hi", "c1");
+            ReflectionTestUtils.setField(message.getRoom(), "lastMessageId", 11L);
+            given(messageRepository.findById(10L)).willReturn(Optional.of(message));
+
+            MessageDeleteResult result = messageService.deleteMessage(1L, 10L, 5L);
+
+            assertThat(result.lastMessageChanged()).isFalse();
+            assertThat(result.lastMessagePreview()).isNull();
+            assertThat(result.message().deleted()).isTrue();
+            then(messageRepository).should(never()).findTopByRoomIdAndDeletedAtIsNullOrderByIdDesc(any());
+        }
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 }

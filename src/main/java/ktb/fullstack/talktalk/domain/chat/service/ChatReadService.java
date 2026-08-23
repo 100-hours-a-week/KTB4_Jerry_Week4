@@ -21,6 +21,12 @@ public class ChatReadService {
 
         ChatRoomMember member = chatRoomMemberRepository.findByRoomIdAndUserId(roomId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_CHATROOM_MEMBER));
+
+        if (lastReadMessageId != null
+                && !messageRepository.existsByIdAndRoomId(lastReadMessageId, roomId)) {
+            throw new BusinessException(ErrorCode.MESSAGE_NOT_FOUND);
+        }
+
         member.updateLastRead(lastReadMessageId);
     }
 

@@ -1,5 +1,6 @@
 package ktb.fullstack.talktalk.domain.chat.service;
 
+import ktb.fullstack.talktalk.domain.chat.dto.response.MessageDeleteResult;
 import ktb.fullstack.talktalk.domain.chat.dto.response.MessageListResponseDto;
 import ktb.fullstack.talktalk.domain.chat.dto.response.MessageResponseDto;
 import ktb.fullstack.talktalk.domain.chat.entity.ChatRoom;
@@ -22,6 +23,7 @@ import java.util.List;
 public class MessageService {
 
     private static final int PAGE_SIZE = 30;
+    private static final int MAX_CONTENT_LENGTH = 2000;
 
     private final MessageRepository messageRepository;
     private final MessageWriter messageWriter;
@@ -47,8 +49,12 @@ public class MessageService {
 
     public MessageResponseDto send(Long roomId, Long senderId, String content, String clientMessageId) {
 
-        if (content == null || content.isEmpty()) {
+        if (content == null || content.isBlank()) {
             throw new BusinessException(ErrorCode.EMPTY_MESSAGE);
+        }
+
+        if (content.length() > MAX_CONTENT_LENGTH) {
+            throw new BusinessException(ErrorCode.TOO_LONG_MESSAGE);
         }
 
         if (clientMessageId == null || clientMessageId.isBlank()) {
@@ -63,7 +69,7 @@ public class MessageService {
     }
 
     @Transactional
-    public void deleteMessage(Long roomId, Long messageId, Long requesterId) {
+    public MessageDeleteResult deleteMessage(Long roomId, Long messageId, Long requesterId) {
 
         Message message = messageRepository.findById(messageId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MESSAGE_NOT_FOUND));
@@ -74,15 +80,25 @@ public class MessageService {
         if (!message.getSender().getId().equals(requesterId)) {
             throw new BusinessException(ErrorCode.NOT_MESSAGE_OWNER);
         }
-        if (message.isDeleted()) return;
+        if (message.isDeleted()) {
+            return MessageDeleteResult.lastMessageKept(MessageResponseDto.from(message));
+        }
 
         message.softDelete();
 
         ChatRoom room = message.getRoom();
-        if (messageId.equals(room.getLastMessageId())) {
+        boolean isLastMessage = messageId.equals(room.getLastMessageId());
+
+        if (isLastMessage) {
             Message latest = messageRepository.findTopByRoomIdAndDeletedAtIsNullOrderByIdDesc(roomId).orElse(null);
             room.resetLastMessage(latest);
         }
+
+        MessageResponseDto deleted = MessageResponseDto.from(message);
+
+        return isLastMessage
+                ? MessageDeleteResult.lastMessageChanged(deleted, room.getLastMessagePreview(), room.getLastMessageAt())
+                : MessageDeleteResult.lastMessageKept(deleted);
     }
 
     private Message saveOrRecover(Long roomId, Long senderId, String content, String clientMessageId) {
