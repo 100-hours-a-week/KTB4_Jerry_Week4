@@ -59,7 +59,7 @@ public class MessageWriterTest {
     @DisplayName("채팅방과 발신자를 찾아 메시지를 저장한다")
     void 메시지_정상_저장() {
 
-        given(chatRoomRepository.findById(1L)).willReturn(Optional.of(roomFixture(1L)));
+        given(chatRoomRepository.findByIdForUpdate(1L)).willReturn(Optional.of(roomFixture(1L)));
         given(userRepository.findById(5L)).willReturn(Optional.of(userFixture(5L)));
         given(messageRepository.save(any(Message.class))).willAnswer(inv -> {
             Message m = inv.getArgument(0);
@@ -77,7 +77,7 @@ public class MessageWriterTest {
     @DisplayName("채팅방이 존재하지 않으면 CHATROOM_NOT_FOUND 예외")
     void 채팅방_없음() {
 
-        given(chatRoomRepository.findById(1L)).willReturn(Optional.empty());
+        given(chatRoomRepository.findByIdForUpdate(1L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> messageWriter.write(1L, 5L, "Hi", CLIENT_MESSAGE_ID))
                 .isInstanceOf(BusinessException.class)
@@ -88,7 +88,7 @@ public class MessageWriterTest {
     @DisplayName("발신자가 존재하지 않으면 INVALID_TOKEN 예외")
     void 발신자_없음() {
 
-        given(chatRoomRepository.findById(1L)).willReturn(Optional.of(roomFixture(1L)));
+        given(chatRoomRepository.findByIdForUpdate(1L)).willReturn(Optional.of(roomFixture(1L)));
         given(userRepository.findById(5L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> messageWriter.write(1L, 5L, "Hi", CLIENT_MESSAGE_ID))

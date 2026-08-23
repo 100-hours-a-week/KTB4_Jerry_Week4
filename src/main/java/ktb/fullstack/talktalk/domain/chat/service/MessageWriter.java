@@ -24,7 +24,7 @@ public class MessageWriter {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Message write(Long roomId, Long senderId, String content, String clientMessageId) {
 
-        ChatRoom room = chatRoomRepository.findById(roomId)
+        ChatRoom room = chatRoomRepository.findByIdForUpdate(roomId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CHATROOM_NOT_FOUND));
         User sender = userRepository.findById(senderId)
                 .filter(user -> user.getDeletedAt() == null)
