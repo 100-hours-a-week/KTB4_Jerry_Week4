@@ -9,6 +9,8 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
+import java.util.UUID;
+
 @Entity
 @Table(
         name = "chat_room_members",
@@ -33,16 +35,16 @@ public class ChatRoomMember extends BaseTimeEntity {
     private User user;
 
     @Column(name = "last_read_message_id")
-    private Long lastReadMessageId;
+    private UUID lastReadMessageId;
 
     public ChatRoomMember(ChatRoom room, User user) {
         this.room = room;
         this.user = user;
     }
 
-    public void updateLastRead(Long messageId) {
+    public void updateLastRead(UUID messageId) {
 
-        if (messageId != null && (lastReadMessageId == null || messageId > lastReadMessageId)) {
+        if (messageId != null && (lastReadMessageId == null || messageId.compareTo(lastReadMessageId) > 0)) {
             this.lastReadMessageId = messageId;
         }
     }

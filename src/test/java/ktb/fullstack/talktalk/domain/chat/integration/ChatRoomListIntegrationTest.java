@@ -21,6 +21,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -50,8 +51,8 @@ public class ChatRoomListIntegrationTest {
     ChatRoomQueryService chatRoomQueryService;
 
     Long meId;
-    Long roomWithAliceId;
-    Long roomWithBobId;
+    UUID roomWithAliceId;
+    UUID roomWithBobId;
 
     @BeforeEach
     void setUp() {
@@ -124,15 +125,15 @@ public class ChatRoomListIntegrationTest {
         }
 
         ChatRoomListResponseDto page1 = chatRoomQueryService.getMyRooms(meId, null);
-        List<Long> page1Ids = page1.getRooms().getItems().stream()
+        List<UUID> page1Ids = page1.getRooms().getItems().stream()
                 .map(ChatRoomSummaryDto::roomId).toList();
-        Long cursor = page1.getRooms().getNextCursor();
+        UUID cursor = page1.getRooms().getNextCursor();
 
         assertThat(page1Ids).hasSize(20);
         assertThat(cursor).isNotNull();
 
         ChatRoomListResponseDto page2 = chatRoomQueryService.getMyRooms(meId, cursor);
-        List<Long> page2Ids = page2.getRooms().getItems().stream()
+        List<UUID> page2Ids = page2.getRooms().getItems().stream()
                 .map(ChatRoomSummaryDto::roomId).toList();
 
         assertThat(page2Ids).hasSize(2);
@@ -145,7 +146,7 @@ public class ChatRoomListIntegrationTest {
     @DisplayName("읽음 처리하면 채팅방 목록의 안 읽음 수가 줄어든다")
     void 읽음_반영() {
 
-        Long lastId = messageRepository.findAll().stream()
+        UUID lastId = messageRepository.findAll().stream()
                 .filter(m -> m.getContent().equals("a3-last"))
                 .findFirst().orElseThrow().getId();
         chatReadService.markRead(roomWithAliceId, meId, lastId);

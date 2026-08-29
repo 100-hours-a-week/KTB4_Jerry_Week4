@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/chat/rooms/{roomId}")
 @RequiredArgsConstructor
@@ -20,7 +22,7 @@ public class ChatReadController {
 
     @PostMapping("/read")
     public ResponseEntity<ApiResponse<Void>> markRead(
-            @PathVariable Long roomId,
+            @PathVariable UUID roomId,
             @LoginUser LoginUserInfo loginUser,
             @Valid @RequestBody ChatReadRequestDto request) {
 
@@ -30,7 +32,7 @@ public class ChatReadController {
 
     @GetMapping("/unread-count")
     public ResponseEntity<ApiResponse<UnreadCountResponseDto>> getUnreadCount(
-        @PathVariable Long roomId,
+        @PathVariable UUID roomId,
         @LoginUser LoginUserInfo loginUser
     ) {
 

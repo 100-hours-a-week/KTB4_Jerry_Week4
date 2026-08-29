@@ -8,17 +8,23 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class ChatRoomTest {
+
+    private static UUID uuidOf(long n) {
+
+        return UUID.fromString(String.format("0198f3a2-7c40-7000-8a3f-%012d", n));
+    }
 
     private Message message(long id, String content) {
 
         Message m = new Message(
                 ChatRoom.dm("x:y"),
                 new User("a@a.a", "pw", "n"), content, "cid-" + id);
-        ReflectionTestUtils.setField(m, "id", id);
+        ReflectionTestUtils.setField(m, "id", uuidOf(id));
         ReflectionTestUtils.setField(m, "createdAt", LocalDateTime.of(2026, 8, 6, 21, 0));
         return m;
     }
@@ -31,7 +37,7 @@ public class ChatRoomTest {
 
         room.updateLastMessage(message(10L, "Hi"));
 
-        assertThat(room.getLastMessageId()).isEqualTo(10L);
+        assertThat(room.getLastMessageId()).isEqualTo(uuidOf(10L));
         assertThat(room.getLastMessagePreview()).isEqualTo("Hi");
         assertThat(room.getLastMessageAt()).isEqualTo(LocalDateTime.of(2026, 8, 6, 21, 0));
     }
@@ -45,7 +51,7 @@ public class ChatRoomTest {
 
         room.updateLastMessage(message(20L, "lower"));
 
-        assertThat(room.getLastMessageId()).isEqualTo(30L);
+        assertThat(room.getLastMessageId()).isEqualTo(uuidOf(30L));
         assertThat(room.getLastMessagePreview()).isEqualTo("higher");
     }
 

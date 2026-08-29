@@ -19,6 +19,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 
 import java.security.Principal;
+import java.util.UUID;
 
 @Controller
 @RequiredArgsConstructor
@@ -31,7 +32,7 @@ public class ChatController {
     @MessageMapping("/chat/rooms/{roomId}")
     @SendToUser(destinations = "/queue/acks", broadcast = false)
     public MessageResponseDto handle(
-            @DestinationVariable Long roomId,
+            @DestinationVariable UUID roomId,
             ChatMessageSendRequestDto request,
             Principal principal) {
 

@@ -18,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -42,6 +43,8 @@ public class ChatRoomCreatorTest {
     @InjectMocks
     ChatRoomCreator chatRoomCreator;
 
+    private static final UUID ROOM_ID = UUID.fromString("0198f3a2-7c40-7000-8a3f-1c2d3e4f5060");
+
     private User userFixture(Long id) {
         User user = new User("e" + id + "@a.a", "pw", "n" + id);
         ReflectionTestUtils.setField(user, "id", id);
@@ -56,13 +59,13 @@ public class ChatRoomCreatorTest {
         given(userRepository.findById(99L)).willReturn(Optional.of(userFixture(99L)));
         given(chatRoomRepository.save(any(ChatRoom.class))).willAnswer(inv -> {
             ChatRoom r = inv.getArgument(0);
-            ReflectionTestUtils.setField(r, "id", 1L);
+            ReflectionTestUtils.setField(r, "id", ROOM_ID);
             return r;
         });
 
         ChatRoom room = chatRoomCreator.create("1:99", 1L, 99L);
 
-        assertThat(room.getId()).isEqualTo(1L);
+        assertThat(room.getId()).isEqualTo(ROOM_ID);
         then(chatRoomMemberRepository).should(times(2)).save(any(ChatRoomMember.class));
     }
 

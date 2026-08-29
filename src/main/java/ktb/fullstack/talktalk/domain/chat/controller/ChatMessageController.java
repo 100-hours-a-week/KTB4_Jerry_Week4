@@ -12,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/chat/rooms/{roomId}/messages")
 @RequiredArgsConstructor
@@ -23,9 +25,9 @@ public class ChatMessageController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<MessageListResponseDto>> getMessages(
-            @PathVariable Long roomId,
+            @PathVariable UUID roomId,
             @LoginUser LoginUserInfo loginUser,
-            @RequestParam(required = false) Long cursor) {
+            @RequestParam(required = false) UUID cursor) {
 
         MessageListResponseDto result = messageService.getMessages(roomId, loginUser.userId(), cursor);
         return ResponseEntity.ok(ApiResponse.of("success", result));
@@ -33,8 +35,8 @@ public class ChatMessageController {
 
     @DeleteMapping("/{messageId}")
     public ResponseEntity<ApiResponse<Void>> deleteMessage(
-            @PathVariable Long roomId,
-            @PathVariable Long messageId,
+            @PathVariable UUID roomId,
+            @PathVariable UUID messageId,
             @LoginUser LoginUserInfo loginUser) {
 
         MessageDeleteResult result = messageService.deleteMessage(roomId, messageId, loginUser.userId());

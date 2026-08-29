@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 
 import java.security.Principal;
 import java.util.Set;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -23,8 +24,10 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class ChatMembershipInterceptor implements ChannelInterceptor {
 
-    private static final Pattern ROOM_TOPIC = Pattern.compile("/topic/chat/rooms/(\\d{1,18})");
-    private static final Pattern ROOM_APP = Pattern.compile("/app/chat/rooms/(\\d{1,18})");
+    private static final String UUID_REGEX =
+            "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
+    private static final Pattern ROOM_TOPIC = Pattern.compile("/topic/chat/rooms/(" + UUID_REGEX + ")");
+    private static final Pattern ROOM_APP = Pattern.compile("/app/chat/rooms/(" + UUID_REGEX + ")");
     private static final Set<String> PERSONAL_QUEUES = Set.of("/user/queue/acks", "/user/queue/errors", "/user/queue/rooms");
 
     private final ChatRoomMemberRepository chatRoomMemberRepository;
@@ -66,20 +69,20 @@ public class ChatMembershipInterceptor implements ChannelInterceptor {
         return destination;
     }
 
-    private void verifyMember(Long roomId, Long userId) {
+    private void verifyMember(UUID roomId, Long userId) {
 
         if (!chatRoomMemberRepository.existsByRoomIdAndUserId(roomId, userId)) {
             throw new BusinessException(ErrorCode.NOT_CHATROOM_MEMBER);
         }
     }
 
-    private Long roomId(Pattern pattern, String destination) {
+    private UUID roomId(Pattern pattern, String destination) {
 
         Matcher matcher = pattern.matcher(destination);
         if (!matcher.matches()) {
             throw new BusinessException(ErrorCode.INVALID_DESTINATION);
         }
-        return Long.parseLong(matcher.group(1));
+        return UUID.fromString(matcher.group(1));
     }
 
     private Long currentUserId(StompHeaderAccessor accessor) {

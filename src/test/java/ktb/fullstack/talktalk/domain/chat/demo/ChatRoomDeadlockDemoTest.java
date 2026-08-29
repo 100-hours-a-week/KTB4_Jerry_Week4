@@ -55,7 +55,7 @@ public class ChatRoomDeadlockDemoTest {
     @Autowired
     MessageService messageService;
 
-    Long roomId;
+    UUID roomId;
     List<Long> senderIds;
 
     @BeforeEach

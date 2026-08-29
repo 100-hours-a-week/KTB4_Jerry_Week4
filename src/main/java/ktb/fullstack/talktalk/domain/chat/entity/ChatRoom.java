@@ -2,11 +2,14 @@ package ktb.fullstack.talktalk.domain.chat.entity;
 
 import jakarta.persistence.*;
 import ktb.fullstack.talktalk.global.common.entity.BaseTimeEntity;
+import ktb.fullstack.talktalk.global.common.id.IdGenerator;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.data.domain.Persistable;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(
@@ -15,13 +18,12 @@ import java.time.LocalDateTime;
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ChatRoom extends BaseTimeEntity {
+public class ChatRoom extends BaseTimeEntity implements Persistable<UUID> {
 
     private static final int PREVIEW_MAX_LENGTH = 50;
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private UUID id;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
@@ -31,7 +33,7 @@ public class ChatRoom extends BaseTimeEntity {
     private String dmKey;
 
     @Column(name = "last_message_id")
-    private Long lastMessageId;
+    private UUID lastMessageId;
 
     @Column(name = "last_message_preview", length = 100)
     private String lastMessagePreview;
@@ -40,6 +42,7 @@ public class ChatRoom extends BaseTimeEntity {
     private LocalDateTime lastMessageAt;
 
     private ChatRoom(RoomType type, String dmKey) {
+        this.id = IdGenerator.nextId();
         this.type = type;
         this.dmKey = dmKey;
     }
@@ -51,7 +54,7 @@ public class ChatRoom extends BaseTimeEntity {
     public void updateLastMessage(Message message) {
 
         if (message.getId() == null) return;
-        if (lastMessageId != null && message.getId() <= lastMessageId) return;
+        if (lastMessageId != null && message.getId().compareTo(lastMessageId) <= 0) return;
 
         this.lastMessageId = message.getId();
         this.lastMessagePreview = toPreview(message.getContent());
@@ -75,5 +78,19 @@ public class ChatRoom extends BaseTimeEntity {
 
         if (content == null) return null;
         return content.length() <= PREVIEW_MAX_LENGTH ? content : content.substring(0, PREVIEW_MAX_LENGTH);
+    }
+
+    @Transient
+    private boolean isNew = true;
+
+    @Override
+    public boolean isNew() {
+        return isNew;
+    }
+
+    @PostPersist
+    @PostLoad
+    void markNotNew() {
+        this.isNew = false;
     }
 }

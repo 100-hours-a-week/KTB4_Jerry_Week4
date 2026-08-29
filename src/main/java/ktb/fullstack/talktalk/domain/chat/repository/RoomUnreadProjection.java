@@ -2,9 +2,9 @@ package ktb.fullstack.talktalk.domain.chat.repository;
 
 import java.util.UUID;
 
-public interface RoomPartnerProjection {
+public interface RoomUnreadProjection {
 
     UUID getRoomId();
 
-    Long getPartnerId();
+    long getTotal();
 }

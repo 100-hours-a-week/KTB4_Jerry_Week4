@@ -1,8 +1,8 @@
 package ktb.fullstack.talktalk.domain.chat.service;
 
+import ktb.fullstack.talktalk.domain.chat.dto.response.ChatRoomCreateResponseDto;
 import ktb.fullstack.talktalk.domain.chat.entity.ChatRoom;
 import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomRepository;
-import ktb.fullstack.talktalk.global.common.response.CreateResponseDto;
 import ktb.fullstack.talktalk.global.exception.BusinessException;
 import ktb.fullstack.talktalk.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +16,7 @@ public class ChatRoomService {
     private final ChatRoomRepository chatRoomRepository;
     private final ChatRoomCreator chatRoomCreator;
 
-    public CreateResponseDto getOrCreateDm(Long requesterId, Long partnerId) {
+    public ChatRoomCreateResponseDto getOrCreateDm(Long requesterId, Long partnerId) {
 
         if (requesterId.equals(partnerId)) {
             throw new BusinessException(ErrorCode.CANNOT_CHAT_ALONE);
@@ -25,7 +25,7 @@ public class ChatRoomService {
         ChatRoom room = chatRoomRepository.findByDmKey(dmKey)
                 .orElseGet(() -> createOrRecover(dmKey, requesterId, partnerId));
 
-        return new CreateResponseDto(room.getId());
+        return new ChatRoomCreateResponseDto(room.getId());
     }
 
     private ChatRoom createOrRecover(String dmKey, Long requesterId, Long partnerId) {

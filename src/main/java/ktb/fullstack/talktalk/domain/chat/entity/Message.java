@@ -3,13 +3,16 @@ package ktb.fullstack.talktalk.domain.chat.entity;
 import jakarta.persistence.*;
 import ktb.fullstack.talktalk.domain.user.entity.User;
 import ktb.fullstack.talktalk.global.common.entity.BaseTimeEntity;
+import ktb.fullstack.talktalk.global.common.id.IdGenerator;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
+import org.springframework.data.domain.Persistable;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "messages",
@@ -20,11 +23,10 @@ import java.time.LocalDateTime;
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Message extends BaseTimeEntity {
+public class Message extends BaseTimeEntity implements Persistable<UUID> {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @OnDelete(action = OnDeleteAction.CASCADE)
@@ -45,6 +47,7 @@ public class Message extends BaseTimeEntity {
     private LocalDateTime deletedAt;
 
     public Message(ChatRoom room, User sender, String content, String clientMessageId) {
+        this.id = IdGenerator.nextId();
         this.room = room;
         this.sender = sender;
         this.content = content;
@@ -57,5 +60,19 @@ public class Message extends BaseTimeEntity {
 
     public boolean isDeleted() {
         return deletedAt != null;
+    }
+
+    @Transient
+    private boolean isNew = true;
+
+    @Override
+    public boolean isNew() {
+        return isNew;
+    }
+
+    @PostPersist
+    @PostLoad
+    void markNotNew() {
+        this.isNew = false;
     }
 }

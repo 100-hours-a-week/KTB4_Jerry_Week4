@@ -17,6 +17,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
@@ -40,7 +42,7 @@ public class MessageDeleteIntegrationTest {
 
     Long meId;
     Long partnerId;
-    Long roomId;
+    UUID roomId;
 
     @BeforeEach
     void setUp() {
@@ -61,7 +63,7 @@ public class MessageDeleteIntegrationTest {
         roomId = room.getId();
     }
 
-    private Long send(Long senderId, String content, String cid) {
+    private UUID send(Long senderId, String content, String cid) {
 
         return messageService.send(roomId, senderId, content, cid).message().messageId();
     }
@@ -70,7 +72,7 @@ public class MessageDeleteIntegrationTest {
     @DisplayName("삭제하면 soft delete로 처리된다")
     void 소프트삭제() {
 
-        Long id = send(meId, "삭제하기", "c1");
+        UUID id = send(meId, "삭제하기", "c1");
 
         messageService.deleteMessage(roomId, id, meId);
 
@@ -86,8 +88,8 @@ public class MessageDeleteIntegrationTest {
     @DisplayName("마지막 메시지를 삭제하면 채팅방의 마지막 메시지가 직전 메시지로 재계산된다")
     void 마지막_삭제하면_미리보기_재계산() {
 
-        Long first = send(meId, "first", "c1");
-        Long last = send(meId, "last", "c2");
+        UUID first = send(meId, "first", "c1");
+        UUID last = send(meId, "last", "c2");
 
         messageService.deleteMessage(roomId, last, meId);
 
@@ -100,8 +102,8 @@ public class MessageDeleteIntegrationTest {
     @DisplayName("마지막이 아닌 메시지를 삭제하면 채팅방의 마지막 메시지는 그대로이다")
     void 중간_삭제하면_미리보기_유지() {
 
-        Long first = send(meId, "first", "c1");
-        Long last = send(meId, "last", "c2");
+        UUID first = send(meId, "first", "c1");
+        UUID last = send(meId, "last", "c2");
 
         messageService.deleteMessage(roomId, first, meId);
 

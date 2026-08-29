@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -21,17 +22,17 @@ public class ChatRoomEventPublisher {
     private final ChatRoomMemberRepository chatRoomMemberRepository;
     private final WriterResolver writerResolver;
 
-    public void publishNewMessage(Long roomId, Long senderId, WriterDto sender, String preview, LocalDateTime sendAt) {
+    public void publishNewMessage(UUID roomId, Long senderId, WriterDto sender, String preview, LocalDateTime sendAt) {
 
         publish(roomId, senderId, sender, preview, sendAt, ChatRoomEventType.MESSAGE);
     }
 
-    public void publishMessageDeleted(Long roomId, Long actorId, String preview, LocalDateTime lastMessageAt) {
+    public void publishMessageDeleted(UUID roomId, Long actorId, String preview, LocalDateTime lastMessageAt) {
 
         publish(roomId, actorId, writerResolver.resolveWriter(actorId), preview, lastMessageAt, ChatRoomEventType.DELETED);
     }
 
-    private void publish(Long roomId, Long actorId, WriterDto actor, String preview, LocalDateTime lastMessageAt, ChatRoomEventType type) {
+    private void publish(UUID roomId, Long actorId, WriterDto actor, String preview, LocalDateTime lastMessageAt, ChatRoomEventType type) {
 
         List<RoomPartnerProjection> recipients = chatRoomMemberRepository.findPartners(List.of(roomId), actorId);
         for (RoomPartnerProjection recipient : recipients) {

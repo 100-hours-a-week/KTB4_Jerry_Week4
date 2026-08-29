@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 @Service
 @RequiredArgsConstructor
 public class ChatReadService {
@@ -17,7 +19,7 @@ public class ChatReadService {
     private final MessageRepository messageRepository;
 
     @Transactional
-    public void markRead(Long roomId, Long userId, Long lastReadMessageId) {
+    public void markRead(UUID roomId, Long userId, UUID lastReadMessageId) {
 
         ChatRoomMember member = chatRoomMemberRepository.findByRoomIdAndUserId(roomId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_CHATROOM_MEMBER));
@@ -31,7 +33,7 @@ public class ChatReadService {
     }
 
     @Transactional(readOnly = true)
-    public long getUnreadCount(Long roomId, Long userId) {
+    public long getUnreadCount(UUID roomId, Long userId) {
 
         ChatRoomMember member = chatRoomMemberRepository.findByRoomIdAndUserId(roomId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_CHATROOM_MEMBER));

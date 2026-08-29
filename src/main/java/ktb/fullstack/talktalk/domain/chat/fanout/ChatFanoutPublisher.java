@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
+import java.util.UUID;
+
 @Component
 @RequiredArgsConstructor
 public class ChatFanoutPublisher {
@@ -13,7 +15,7 @@ public class ChatFanoutPublisher {
     private final RedisTemplate<String, RoomMessageEnvelope> roomMessageRedisTemplate;
     private final RedisTemplate<String, RoomEventEnvelope> roomEventRedisTemplate;
 
-    public void publishRoomMessage(Long roomId, MessageResponseDto payload) {
+    public void publishRoomMessage(UUID roomId, MessageResponseDto payload) {
 
         roomMessageRedisTemplate.convertAndSend(
                 ChatFanoutChannels.ROOM_MESSAGE, new RoomMessageEnvelope(roomId, payload));

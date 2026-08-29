@@ -35,6 +35,7 @@ import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import java.lang.reflect.Type;
 import java.time.LocalDateTime;
+import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -66,7 +67,7 @@ public class ChatStompIntegrationTest {
 
     Long senderId;
     Long partnerId;
-    Long roomId;
+    UUID roomId;
     String token;
 
     @BeforeEach

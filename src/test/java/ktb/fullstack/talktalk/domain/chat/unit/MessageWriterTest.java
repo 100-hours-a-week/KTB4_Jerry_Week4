@@ -18,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -40,8 +41,10 @@ public class MessageWriterTest {
     MessageWriter messageWriter;
 
     private static final String CLIENT_MESSAGE_ID = "11111111-1111-1111-1111-111111111111";
+    private static final UUID ROOM_ID       = UUID.fromString("0198f3a2-7c40-7000-8a3f-1c2d3e4f5060");
+    private static final UUID MESSAGE_ID    = UUID.fromString("0198f3a2-7c40-7001-9b4e-2d3e4f506170");
 
-    private ChatRoom roomFixture(Long id) {
+    private ChatRoom roomFixture(UUID id) {
 
         ChatRoom room = ChatRoom.dm("1:2");
         ReflectionTestUtils.setField(room, "id", id);
@@ -59,17 +62,17 @@ public class MessageWriterTest {
     @DisplayName("채팅방과 발신자를 찾아 메시지를 저장한다")
     void 메시지_정상_저장() {
 
-        given(chatRoomRepository.findByIdForUpdate(1L)).willReturn(Optional.of(roomFixture(1L)));
+        given(chatRoomRepository.findByIdForUpdate(ROOM_ID)).willReturn(Optional.of(roomFixture(ROOM_ID)));
         given(userRepository.findById(5L)).willReturn(Optional.of(userFixture(5L)));
-        given(messageRepository.save(any(Message.class))).willAnswer(inv -> {
+        given(messageRepository.saveAndFlush(any(Message.class))).willAnswer(inv -> {
             Message m = inv.getArgument(0);
-            ReflectionTestUtils.setField(m, "id", 10L);
+            ReflectionTestUtils.setField(m, "id", MESSAGE_ID);
             return m;
         });
 
-        Message saved = messageWriter.write(1L, 5L, "Hi", CLIENT_MESSAGE_ID);
+        Message saved = messageWriter.write(ROOM_ID, 5L, "Hi", CLIENT_MESSAGE_ID);
 
-        assertThat(saved.getId()).isEqualTo(10L);
+        assertThat(saved.getId()).isEqualTo(MESSAGE_ID);
         assertThat(saved.getClientMessageId()).isEqualTo(CLIENT_MESSAGE_ID);
     }
 
@@ -77,9 +80,9 @@ public class MessageWriterTest {
     @DisplayName("채팅방이 존재하지 않으면 CHATROOM_NOT_FOUND 예외")
     void 채팅방_없음() {
 
-        given(chatRoomRepository.findByIdForUpdate(1L)).willReturn(Optional.empty());
+        given(chatRoomRepository.findByIdForUpdate(ROOM_ID)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> messageWriter.write(1L, 5L, "Hi", CLIENT_MESSAGE_ID))
+        assertThatThrownBy(() -> messageWriter.write(ROOM_ID, 5L, "Hi", CLIENT_MESSAGE_ID))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.CHATROOM_NOT_FOUND);
     }
@@ -88,10 +91,10 @@ public class MessageWriterTest {
     @DisplayName("발신자가 존재하지 않으면 INVALID_TOKEN 예외")
     void 발신자_없음() {
 
-        given(chatRoomRepository.findByIdForUpdate(1L)).willReturn(Optional.of(roomFixture(1L)));
+        given(chatRoomRepository.findByIdForUpdate(ROOM_ID)).willReturn(Optional.of(roomFixture(ROOM_ID)));
         given(userRepository.findById(5L)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> messageWriter.write(1L, 5L, "Hi", CLIENT_MESSAGE_ID))
+        assertThatThrownBy(() -> messageWriter.write(ROOM_ID, 5L, "Hi", CLIENT_MESSAGE_ID))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.INVALID_TOKEN);
     }

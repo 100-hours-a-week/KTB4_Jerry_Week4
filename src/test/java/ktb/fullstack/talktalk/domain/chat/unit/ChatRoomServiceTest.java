@@ -1,10 +1,10 @@
 package ktb.fullstack.talktalk.domain.chat.unit;
 
+import ktb.fullstack.talktalk.domain.chat.dto.response.ChatRoomCreateResponseDto;
 import ktb.fullstack.talktalk.domain.chat.entity.ChatRoom;
 import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomRepository;
 import ktb.fullstack.talktalk.domain.chat.service.ChatRoomCreator;
 import ktb.fullstack.talktalk.domain.chat.service.ChatRoomService;
-import ktb.fullstack.talktalk.global.common.response.CreateResponseDto;
 import ktb.fullstack.talktalk.global.exception.BusinessException;
 import ktb.fullstack.talktalk.global.exception.ErrorCode;
 import org.junit.jupiter.api.DisplayName;
@@ -17,6 +17,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -38,7 +39,9 @@ public class ChatRoomServiceTest {
     @InjectMocks
     ChatRoomService chatRoomService;
 
-    private ChatRoom roomFixture(Long id, String dmKey) {
+    private static final UUID ROOM_ID = UUID.fromString("0198f3a2-7c40-7000-8a3f-1c2d3e4f5060");
+
+    private ChatRoom roomFixture(UUID id, String dmKey) {
 
         ChatRoom room = ChatRoom.dm(dmKey);
         ReflectionTestUtils.setField(room, "id", id);
@@ -49,11 +52,11 @@ public class ChatRoomServiceTest {
     @DisplayName("기존 채팅방이 있으면 그대로 반환하고 새로 만들지 않는다")
     void 채팅방_이미_존재하면_그대로_반환() {
 
-        given(chatRoomRepository.findByDmKey("1:99")).willReturn(Optional.of(roomFixture(1L, "1:99")));
+        given(chatRoomRepository.findByDmKey("1:99")).willReturn(Optional.of(roomFixture(ROOM_ID, "1:99")));
 
-        CreateResponseDto result = chatRoomService.getOrCreateDm(1L, 99L);
+        ChatRoomCreateResponseDto result = chatRoomService.getOrCreateDm(1L, 99L);
 
-        assertThat(result.getId()).isEqualTo(1L);
+        assertThat(result.id()).isEqualTo(ROOM_ID);
         then(chatRoomCreator).should(never()).create(any(), any(), any());
     }
 
@@ -62,11 +65,11 @@ public class ChatRoomServiceTest {
     void 채팅방_없으면_새_채팅방_생성() {
 
         given(chatRoomRepository.findByDmKey("1:99")).willReturn(Optional.empty());
-        given(chatRoomCreator.create("1:99", 1L, 99L)).willReturn(roomFixture(1L, "1:99"));
+        given(chatRoomCreator.create("1:99", 1L, 99L)).willReturn(roomFixture(ROOM_ID, "1:99"));
 
-        CreateResponseDto result = chatRoomService.getOrCreateDm(1L, 99L);
+        ChatRoomCreateResponseDto result = chatRoomService.getOrCreateDm(1L, 99L);
 
-        assertThat(result.getId()).isEqualTo(1L);
+        assertThat(result.id()).isEqualTo(ROOM_ID);
     }
 
     @Test
@@ -87,12 +90,12 @@ public class ChatRoomServiceTest {
 
         given(chatRoomRepository.findByDmKey("1:99"))
                 .willReturn(Optional.empty())
-                .willReturn(Optional.of(roomFixture(1L, "1:99")));
+                .willReturn(Optional.of(roomFixture(ROOM_ID, "1:99")));
         given(chatRoomCreator.create("1:99", 1L, 99L))
                 .willThrow(new DataIntegrityViolationException("dup dm_key"));
 
-        CreateResponseDto result = chatRoomService.getOrCreateDm(1L, 99L);
+        ChatRoomCreateResponseDto result = chatRoomService.getOrCreateDm(1L, 99L);
 
-        assertThat(result.getId()).isEqualTo(1L);
+        assertThat(result.id()).isEqualTo(ROOM_ID);
     }
 }

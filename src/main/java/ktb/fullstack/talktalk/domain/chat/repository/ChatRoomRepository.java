@@ -10,8 +10,9 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
-public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
+public interface ChatRoomRepository extends JpaRepository<ChatRoom, UUID> {
 
     Optional<ChatRoom> findByDmKey(String dmKey);
 
@@ -23,9 +24,9 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
             order by r.lastMessageId desc
            """)
     List<ChatRoom> findRoomsByMemberAndCursor(@Param("userId") Long userId,
-                                              @Param ("cursor") Long cursor, Pageable pageable);
+                                              @Param ("cursor") UUID cursor, Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select r from ChatRoom r where r.id = :id")
-    Optional<ChatRoom> findByIdForUpdate(@Param("id") Long id);
+    Optional<ChatRoom> findByIdForUpdate(@Param("id") UUID id);
 }

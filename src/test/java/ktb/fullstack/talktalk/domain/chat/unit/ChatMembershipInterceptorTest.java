@@ -21,6 +21,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -34,6 +35,8 @@ public class ChatMembershipInterceptorTest {
 
     @InjectMocks
     ChatMembershipInterceptor interceptor;
+
+    private static final UUID ROOM_ID = UUID.fromString("0198f3a2-7c40-7000-8a3f-1c2d3e4f5060");
 
     private Authentication user(Long userId) {
 
@@ -54,8 +57,8 @@ public class ChatMembershipInterceptorTest {
     @DisplayName("채팅방 멤버의 구독은 허용된다")
     void 멤버_구독_허용() {
 
-        given(chatRoomMemberRepository.existsByRoomIdAndUserId(1L, 5L)).willReturn(true);
-        Message<byte[]> message = frame(StompCommand.SUBSCRIBE, "/topic/chat/rooms/1", user(5L));
+        given(chatRoomMemberRepository.existsByRoomIdAndUserId(ROOM_ID, 5L)).willReturn(true);
+        Message<byte[]> message = frame(StompCommand.SUBSCRIBE, "/topic/chat/rooms/0198f3a2-7c40-7000-8a3f-1c2d3e4f5060", user(5L));
 
         assertThatCode(() -> interceptor.preSend(message, null)).doesNotThrowAnyException();
     }
@@ -64,8 +67,8 @@ public class ChatMembershipInterceptorTest {
     @DisplayName("채팅방 멤버의 전송은 허용된다")
     void 멤버_전송_허용() {
 
-        given(chatRoomMemberRepository.existsByRoomIdAndUserId(1L, 5L)).willReturn(true);
-        Message<byte[]> message = frame(StompCommand.SEND, "/app/chat/rooms/1", user(5L));
+        given(chatRoomMemberRepository.existsByRoomIdAndUserId(ROOM_ID, 5L)).willReturn(true);
+        Message<byte[]> message = frame(StompCommand.SEND, "/app/chat/rooms/0198f3a2-7c40-7000-8a3f-1c2d3e4f5060", user(5L));
 
         assertThatCode(() -> interceptor.preSend(message, null)).doesNotThrowAnyException();
     }
@@ -74,8 +77,8 @@ public class ChatMembershipInterceptorTest {
     @DisplayName("채팅방 비멤버의 구독은 거부된다")
     void 비멤버_구독_거부() {
 
-        given(chatRoomMemberRepository.existsByRoomIdAndUserId(1L, 5L)).willReturn(false);
-        Message<byte[]> message = frame(StompCommand.SUBSCRIBE, "/topic/chat/rooms/1", user(5L));
+        given(chatRoomMemberRepository.existsByRoomIdAndUserId(ROOM_ID, 5L)).willReturn(false);
+        Message<byte[]> message = frame(StompCommand.SUBSCRIBE, "/topic/chat/rooms/0198f3a2-7c40-7000-8a3f-1c2d3e4f5060", user(5L));
 
         assertThatThrownBy(() -> interceptor.preSend(message, null))
                 .isInstanceOf(BusinessException.class)
@@ -86,8 +89,8 @@ public class ChatMembershipInterceptorTest {
     @DisplayName("채팅방 비멤버의 전송은 거부된다")
     void 비멤버_전송_거부() {
 
-        given(chatRoomMemberRepository.existsByRoomIdAndUserId(1L, 5L)).willReturn(false);
-        Message<byte[]> message = frame(StompCommand.SEND, "/app/chat/rooms/1", user(5L));
+        given(chatRoomMemberRepository.existsByRoomIdAndUserId(ROOM_ID, 5L)).willReturn(false);
+        Message<byte[]> message = frame(StompCommand.SEND, "/app/chat/rooms/0198f3a2-7c40-7000-8a3f-1c2d3e4f5060", user(5L));
 
         assertThatThrownBy(() -> interceptor.preSend(message, null))
                 .isInstanceOf(BusinessException.class)
@@ -108,13 +111,13 @@ public class ChatMembershipInterceptorTest {
     @ValueSource(strings = {
             "/topic/**",
             "/topic/other",
-            "/topic/chat/rooms/1/extra",
-            "/topic/evil/chat/rooms/1",
+            "/topic/chat/rooms/0198f3a2-7c40-7000-8a3f-1c2d3e4f5060/extra",
+            "/topic/evil/chat/rooms/0198f3a2-7c40-7000-8a3f-1c2d3e4f5060",
             "/topic/chat/rooms/abc",
             "/queue/**",
             "/queue/acks-user",
             "/user/queue/**",
-            "/app/chat/rooms/1"
+            "/app/chat/rooms/0198f3a2-7c40-7000-8a3f-1c2d3e4f5060"
     })
     @DisplayName("구독 대상 목적지 형식이 아닌 구독은 거부된다")
     void 알_수_없는_목적지_구독_거부(String destination) {
@@ -128,8 +131,8 @@ public class ChatMembershipInterceptorTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "/topic/chat/rooms/1",
-            "/app/chat/rooms/1/extra",
+            "/topic/chat/rooms/0198f3a2-7c40-7000-8a3f-1c2d3e4f5060",
+            "/app/chat/rooms/0198f3a2-7c40-7000-8a3f-1c2d3e4f5060/extra",
             "/app/chat/rooms",
             "/app/other",
             "/user/queue/acks"

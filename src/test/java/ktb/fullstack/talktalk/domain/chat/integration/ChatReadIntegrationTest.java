@@ -17,6 +17,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
@@ -39,7 +41,7 @@ public class ChatReadIntegrationTest {
     ChatReadService chatReadService;
 
     Long meId;
-    Long roomId;
+    UUID roomId;
 
     @BeforeEach
     void setUp() {
@@ -70,7 +72,7 @@ public class ChatReadIntegrationTest {
 
         assertThat(chatReadService.getUnreadCount(roomId, meId)).isEqualTo(2);
 
-        Long firstYours = messageRepository.findAll().stream()
+        UUID firstYours = messageRepository.findAll().stream()
                 .filter(m -> m.getContent().equals("yours-1"))
                 .findFirst().orElseThrow().getId();
         chatReadService.markRead(roomId, meId, firstYours);
@@ -83,8 +85,8 @@ public class ChatReadIntegrationTest {
     @DisplayName("읽음 포인터를 가장 최신 메시지까지 올리면 안 읽은 수는 0이다")
     void 모두_읽음_처리_후_0() {
 
-        Long latest = messageRepository.findAll().stream()
-                .mapToLong(Message::getId).max().orElseThrow();
+        UUID latest = messageRepository.findAll().stream()
+                .map(Message::getId).max(UUID::compareTo).orElseThrow();
 
         chatReadService.markRead(roomId, meId, latest);
 

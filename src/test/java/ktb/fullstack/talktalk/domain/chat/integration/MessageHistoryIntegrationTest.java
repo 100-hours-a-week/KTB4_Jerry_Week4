@@ -21,6 +21,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -45,7 +47,7 @@ public class MessageHistoryIntegrationTest {
 
     Long memberId;
     Long outsiderId;
-    Long roomId;
+    UUID roomId;
 
     @BeforeEach
     void setUp() {
@@ -91,7 +93,7 @@ public class MessageHistoryIntegrationTest {
     @DisplayName("cursor 이하의 메시지만 반환한다")
     void 커서_이하_메시지만_반환() {
 
-        Long secondId = messageRepository.findAll().stream()
+        UUID secondId = messageRepository.findAll().stream()
                 .filter(m -> m.getContent().equals("second"))
                 .findFirst().orElseThrow().getId();
 
