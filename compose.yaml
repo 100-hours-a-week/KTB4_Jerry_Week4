@@ -34,6 +34,20 @@ services:
       start_period: 30s
     restart: unless-stopped
 
+  mongo:
+    image: mongo:8
+    environment:
+      MONGO_INITDB_DATABASE: talktalk
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ping:1}).ok"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 20s
+    restart: unless-stopped
+
   redis:
     image: redis:alpine
     command: redis-server --save "" --appendonly no
@@ -51,11 +65,15 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      mongo:
+        condition: service_healthy
 
   backend2:
     <<: *backend
     depends_on:
       mysql:
+        condition: service_healthy
+      mongo:
         condition: service_healthy
 
   nginx:
@@ -71,3 +89,4 @@ services:
 
 volumes:
   mysql-data:
+  mongo-data:

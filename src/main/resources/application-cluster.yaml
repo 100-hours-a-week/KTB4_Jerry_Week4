@@ -1,4 +1,8 @@
 spring:
+  mongodb:
+    uri: mongodb://mongo:27017/talktalk
+    representation:
+      uuid: standard
   datasource:
     url: jdbc:mysql://mysql:3306/talktalk?characterEncoding=UTF-8&serverTimezone=UTC
     username: talktalk
