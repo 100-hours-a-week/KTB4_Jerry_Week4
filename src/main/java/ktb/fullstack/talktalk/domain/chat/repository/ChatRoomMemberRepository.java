@@ -23,15 +23,5 @@ public interface ChatRoomMemberRepository extends JpaRepository<ChatRoomMember, 
     List<RoomPartnerProjection> findPartners(@Param("roomIds") List<UUID> roomIds, @Param("userId") Long userId);
 
 
-    @Query("""
-            select msg.room.id as roomId, count(msg) as total
-            from Message msg, ChatRoomMember mem
-            where mem.room.id = msg.room.id and mem.user.id = :userId
-                and mem.room.id in :roomIds
-                and msg.sender.id <> :userId
-                and msg.deletedAt is null
-                and (mem.lastReadMessageId is null or msg.id > mem.lastReadMessageId)
-            group by msg.room.id
-           """)
-    List<RoomUnreadProjection> countUnreadByRooms(@Param("roomIds") List<UUID> roomIds, @Param("userId") Long userId);
+    List<ChatRoomMember> findByRoomIdInAndUserId(List<UUID> roomIds, Long userId);
 }

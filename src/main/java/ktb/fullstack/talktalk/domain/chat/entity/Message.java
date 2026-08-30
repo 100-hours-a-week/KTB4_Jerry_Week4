@@ -1,57 +1,49 @@
 package ktb.fullstack.talktalk.domain.chat.entity;
 
-import jakarta.persistence.*;
-import ktb.fullstack.talktalk.domain.user.entity.User;
-import ktb.fullstack.talktalk.global.common.entity.BaseTimeEntity;
 import ktb.fullstack.talktalk.global.common.id.IdGenerator;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Transient;
 import org.springframework.data.domain.Persistable;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Entity
-@Table(name = "messages",
-        uniqueConstraints = @UniqueConstraint(
-                name = "uq_message_idempotency",
-                columnNames = {"room_id", "sender_id", "client_message_id"}
-        )
-)
+@Document(collection = "messages")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Message extends BaseTimeEntity implements Persistable<UUID> {
+public class Message implements Persistable<UUID> {
 
     @Id
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @OnDelete(action = OnDeleteAction.CASCADE)
-    @JoinColumn(name = "room_id", nullable = false)
-    private ChatRoom room;
+    @Field("roomId")
+    private UUID roomId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "sender_id", nullable = false)
-    private User sender;
+    @Field("senderId")
+    private Long senderId;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
-    @Column(name = "client_message_id", nullable = false, updatable = false)
     private String clientMessageId;
 
-    @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    public Message(ChatRoom room, User sender, String content, String clientMessageId) {
+    @CreatedDate
+    private LocalDateTime createdAt;
+
+    public Message(UUID roomId, Long senderId, String content, String clientMessageId) {
         this.id = IdGenerator.nextId();
-        this.room = room;
-        this.sender = sender;
+        this.roomId = roomId;
+        this.senderId = senderId;
         this.content = content;
         this.clientMessageId = clientMessageId;
+        this.createdAt = LocalDateTime.now();
     }
 
     public void softDelete() {
@@ -70,9 +62,7 @@ public class Message extends BaseTimeEntity implements Persistable<UUID> {
         return isNew;
     }
 
-    @PostPersist
-    @PostLoad
-    void markNotNew() {
+    public void markNotNew() {
         this.isNew = false;
     }
 }

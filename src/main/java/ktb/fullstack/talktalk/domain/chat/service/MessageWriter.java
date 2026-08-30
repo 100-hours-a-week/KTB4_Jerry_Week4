@@ -32,7 +32,7 @@ public class MessageWriter {
                 .filter(user -> user.getDeletedAt() == null)
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_TOKEN));
 
-        Message message = messageRepository.saveAndFlush(new Message(room, sender, content, clientMessageId));
+        Message message = messageRepository.save(new Message(roomId, sender.getId(), content, clientMessageId));
         room.updateLastMessage(message);
         return message;
     }

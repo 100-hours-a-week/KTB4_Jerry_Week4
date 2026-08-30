@@ -18,8 +18,8 @@ public record MessageResponseDto(
 
         return new MessageResponseDto(
                 message.getId(),
-                message.getRoom().getId(),
-                message.getSender().getId(),
+                message.getRoomId(),
+                message.getSenderId(),
                 message.isDeleted() ? null : message.getContent(),
                 message.getClientMessageId(),
                 message.isDeleted(),

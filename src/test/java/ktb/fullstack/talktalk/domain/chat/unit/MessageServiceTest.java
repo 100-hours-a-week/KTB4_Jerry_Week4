@@ -6,6 +6,7 @@ import ktb.fullstack.talktalk.domain.chat.dto.response.MessageResponseDto;
 import ktb.fullstack.talktalk.domain.chat.entity.ChatRoom;
 import ktb.fullstack.talktalk.domain.chat.entity.Message;
 import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomMemberRepository;
+import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomRepository;
 import ktb.fullstack.talktalk.domain.chat.repository.MessageRepository;
 import ktb.fullstack.talktalk.domain.chat.service.MessageService;
 import ktb.fullstack.talktalk.domain.chat.service.MessageWriter;
@@ -51,6 +52,9 @@ public class MessageServiceTest {
     @Mock
     WriterResolver writerResolver;
 
+    @Mock
+    ChatRoomRepository chatRoomRepository;
+
     @InjectMocks
     MessageService messageService;
 
@@ -78,7 +82,7 @@ public class MessageServiceTest {
 
     private Message messageFixture(UUID id, UUID roomId, Long senderId, String content, String clientMessageId) {
 
-        Message message = new Message(roomFixture(roomId), userFixture(senderId), content, clientMessageId);
+        Message message = new Message(roomId, senderId, content, clientMessageId);
         ReflectionTestUtils.setField(message, "id", id);
         ReflectionTestUtils.setField(message, "createdAt", LocalDateTime.now());
         return message;
@@ -212,7 +216,7 @@ public class MessageServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode").isEqualTo(ErrorCode.NOT_CHATROOM_MEMBER);
 
-            then(messageRepository).should(never()).findByRoomIdAndCursor(any(), any(), any());
+            then(messageRepository).should(never()).findByRoomIdOrderByIdDesc(any(), any());
         }
 
         @Test
@@ -220,7 +224,7 @@ public class MessageServiceTest {
         void 다음_페이지_있음() {
 
             given(chatRoomMemberRepository.existsByRoomIdAndUserId(ROOM_ID, 5L)).willReturn(true);
-            given(messageRepository.findByRoomIdAndCursor(eq(ROOM_ID), isNull(), any(Pageable.class)))
+            given(messageRepository.findByRoomIdOrderByIdDesc(eq(ROOM_ID), any(Pageable.class)))
                     .willReturn(messagesDesc(31));
 
             MessageListResponseDto result = messageService.getMessages(ROOM_ID, 5L, null);
@@ -234,7 +238,7 @@ public class MessageServiceTest {
         void 마지막_페이지() {
 
             given(chatRoomMemberRepository.existsByRoomIdAndUserId(ROOM_ID, 5L)).willReturn(true);
-            given(messageRepository.findByRoomIdAndCursor(eq(ROOM_ID), isNull(), any(Pageable.class)))
+            given(messageRepository.findByRoomIdOrderByIdDesc(eq(ROOM_ID), any(Pageable.class)))
                     .willReturn(messagesDesc(5));
 
             MessageListResponseDto result = messageService.getMessages(ROOM_ID, 5L, null);
@@ -302,7 +306,9 @@ public class MessageServiceTest {
         void 마지막_삭제하면_직전_메시지로_교체() {
 
             Message message = messageFixture(MESSAGE_ID, ROOM_ID, 5L, "Hi", "c1");
-            ReflectionTestUtils.setField(message.getRoom(), "lastMessageId", MESSAGE_ID);
+            ChatRoom room = roomFixture(ROOM_ID);
+            ReflectionTestUtils.setField(room, "lastMessageId", MESSAGE_ID);
+            given(chatRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
             Message previous = messageFixture(PREVIOUS_MESSAGE_ID, ROOM_ID, 5L, "직전 메시지", "c0");
             given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(message));
             given(messageRepository.findTopByRoomIdAndDeletedAtIsNullOrderByIdDesc(ROOM_ID))
@@ -323,7 +329,9 @@ public class MessageServiceTest {
         void 마지막_삭제하면_미리보기_비움() {
 
             Message message = messageFixture(MESSAGE_ID, ROOM_ID, 5L, "Hi", "c1");
-            ReflectionTestUtils.setField(message.getRoom(), "lastMessageId", MESSAGE_ID);
+            ChatRoom room = roomFixture(ROOM_ID);
+            ReflectionTestUtils.setField(room, "lastMessageId", MESSAGE_ID);
+            given(chatRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
             given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(message));
             given(messageRepository.findTopByRoomIdAndDeletedAtIsNullOrderByIdDesc(ROOM_ID))
                     .willReturn(Optional.empty());
@@ -340,7 +348,9 @@ public class MessageServiceTest {
         void 중간_삭제하면_재조회_없음() {
 
             Message message = messageFixture(MESSAGE_ID, ROOM_ID, 5L, "Hi", "c1");
-            ReflectionTestUtils.setField(message.getRoom(), "lastMessageId", NEWER_MESSAGE_ID);
+            ChatRoom room = roomFixture(ROOM_ID);
+            ReflectionTestUtils.setField(room, "lastMessageId", NEWER_MESSAGE_ID);
+            given(chatRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
             given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(message));
 
             MessageDeleteResult result = messageService.deleteMessage(ROOM_ID, MESSAGE_ID, 5L);

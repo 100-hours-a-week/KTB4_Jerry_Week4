@@ -8,7 +8,8 @@ import ktb.fullstack.talktalk.domain.chat.entity.ChatRoom;
 import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomMemberRepository;
 import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomRepository;
 import ktb.fullstack.talktalk.domain.chat.repository.RoomPartnerProjection;
-import ktb.fullstack.talktalk.domain.chat.repository.RoomUnreadProjection;
+import ktb.fullstack.talktalk.domain.chat.repository.MessageUnreadCounter;
+import ktb.fullstack.talktalk.domain.chat.entity.ChatRoomMember;
 import ktb.fullstack.talktalk.domain.user.dto.WriterDto;
 import ktb.fullstack.talktalk.domain.user.service.WriterResolver;
 import ktb.fullstack.talktalk.global.exception.BusinessException;
@@ -18,6 +19,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -31,6 +33,7 @@ public class ChatRoomQueryService {
     private final ChatRoomRepository chatRoomRepository;
     private final ChatRoomMemberRepository chatRoomMemberRepository;
     private final WriterResolver writerResolver;
+    private final MessageUnreadCounter messageUnreadCounter;
 
     @Transactional(readOnly = true)
     public ChatRoomListResponseDto getMyRooms(Long userId, UUID cursor) {
@@ -53,8 +56,12 @@ public class ChatRoomQueryService {
         List<Long> partnerIds = partnerIdByRoom.values().stream().distinct().toList();
         Map<Long, WriterDto> partners = writerResolver.resolveWriters(partnerIds);
 
-        Map<UUID, Long> unreadByRoom = chatRoomMemberRepository.countUnreadByRooms(roomIds, userId).stream()
-                .collect(Collectors.toMap(RoomUnreadProjection::getRoomId, RoomUnreadProjection::getTotal));
+        Map<UUID, UUID> lastReadByRoom = new HashMap<>();
+        for (UUID roomId : roomIds) lastReadByRoom.put(roomId, null);
+        for (ChatRoomMember member : chatRoomMemberRepository.findByRoomIdInAndUserId(roomIds, userId)) {
+            lastReadByRoom.put(member.getRoom().getId(), member.getLastReadMessageId());
+        }
+        Map<UUID, Long> unreadByRoom = messageUnreadCounter.countByRooms(lastReadByRoom, userId);
 
         List<ChatRoomSummaryDto> items = pageContent.stream()
                 .map(room -> new ChatRoomSummaryDto(

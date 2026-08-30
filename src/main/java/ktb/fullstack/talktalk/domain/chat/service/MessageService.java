@@ -4,6 +4,7 @@ import ktb.fullstack.talktalk.domain.chat.dto.response.*;
 import ktb.fullstack.talktalk.domain.chat.entity.ChatRoom;
 import ktb.fullstack.talktalk.domain.chat.entity.Message;
 import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomMemberRepository;
+import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomRepository;
 import ktb.fullstack.talktalk.domain.chat.repository.MessageRepository;
 import ktb.fullstack.talktalk.domain.user.service.WriterResolver;
 import ktb.fullstack.talktalk.global.exception.BusinessException;
@@ -27,6 +28,7 @@ public class MessageService {
     private final MessageRepository messageRepository;
     private final MessageWriter messageWriter;
     private final ChatRoomMemberRepository chatRoomMemberRepository;
+    private final ChatRoomRepository chatRoomRepository;
     private final WriterResolver writerResolver;
 
     @Transactional(readOnly = true)
@@ -36,8 +38,10 @@ public class MessageService {
             throw new BusinessException(ErrorCode.NOT_CHATROOM_MEMBER);
         }
 
-        List<Message> messages = messageRepository.
-                findByRoomIdAndCursor(roomId, cursor, PageRequest.of(0, PAGE_SIZE + 1));
+        PageRequest page = PageRequest.of(0, PAGE_SIZE + 1);
+        List<Message> messages = cursor == null
+                ? messageRepository.findByRoomIdOrderByIdDesc(roomId, page)
+                : messageRepository.findByRoomIdAndIdLessThanEqualOrderByIdDesc(roomId, cursor, page);
 
         boolean hasNext = messages.size() > PAGE_SIZE;
         List<Message> pageContent = hasNext ? messages.subList(0, PAGE_SIZE) : messages;
@@ -67,7 +71,7 @@ public class MessageService {
 
         return new MessageSendResult(
                 MessageResponseDto.from(message),
-                writerResolver.resolveWriter(message.getSender()));
+                writerResolver.resolveWriter(message.getSenderId()));
     }
 
     @Transactional
@@ -76,10 +80,10 @@ public class MessageService {
         Message message = messageRepository.findById(messageId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MESSAGE_NOT_FOUND));
 
-        if (!message.getRoom().getId().equals(roomId)) {
+        if (!message.getRoomId().equals(roomId)) {
             throw new BusinessException(ErrorCode.MESSAGE_NOT_FOUND);
         }
-        if (!message.getSender().getId().equals(requesterId)) {
+        if (!message.getSenderId().equals(requesterId)) {
             throw new BusinessException(ErrorCode.NOT_MESSAGE_OWNER);
         }
         if (message.isDeleted()) {
@@ -87,8 +91,10 @@ public class MessageService {
         }
 
         message.softDelete();
+        messageRepository.save(message);
 
-        ChatRoom room = message.getRoom();
+        ChatRoom room = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CHATROOM_NOT_FOUND));
         boolean isLastMessage = messageId.equals(room.getLastMessageId());
 
         if (isLastMessage) {

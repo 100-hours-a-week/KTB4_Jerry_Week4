@@ -25,9 +25,13 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import ktb.fullstack.talktalk.support.MySqlTestContainerConfig;
+import ktb.fullstack.talktalk.support.MongoTestContainerConfig;
+import org.springframework.context.annotation.Import;
 
 @SpringBootTest
-@ActiveProfiles("test")
+@ActiveProfiles("mongotest")
+@Import({ MySqlTestContainerConfig.class, MongoTestContainerConfig.class })
 public class MessageHistoryIntegrationTest {
 
     @Autowired
@@ -67,10 +71,10 @@ public class MessageHistoryIntegrationTest {
 
         ChatRoom otherRoom = chatRoomRepository.save(ChatRoom.dm("99:100"));
 
-        messageRepository.save(new Message(room, member, "first", "cid-1"));
-        messageRepository.save(new Message(room, member, "second", "cid-2"));
-        messageRepository.save(new Message(room, member, "third", "cid-3"));
-        messageRepository.save(new Message(otherRoom, member, "other-room", "cid-x"));
+        messageRepository.save(new Message(room.getId(), member.getId(), "first", "cid-1"));
+        messageRepository.save(new Message(room.getId(), member.getId(), "second", "cid-2"));
+        messageRepository.save(new Message(room.getId(), member.getId(), "third", "cid-3"));
+        messageRepository.save(new Message(otherRoom.getId(), member.getId(), "other-room", "cid-x"));
 
         memberId = member.getId();
         outsiderId = outsider.getId();

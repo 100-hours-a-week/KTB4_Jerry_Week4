@@ -42,9 +42,13 @@ import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
+import ktb.fullstack.talktalk.support.MySqlTestContainerConfig;
+import ktb.fullstack.talktalk.support.MongoTestContainerConfig;
+import org.springframework.context.annotation.Import;
 
 @SpringBootTest(webEnvironment = RANDOM_PORT)
-@ActiveProfiles("test")
+@ActiveProfiles("mongotest")
+@Import({ MySqlTestContainerConfig.class, MongoTestContainerConfig.class })
 public class ChatStompIntegrationTest {
 
     @LocalServerPort

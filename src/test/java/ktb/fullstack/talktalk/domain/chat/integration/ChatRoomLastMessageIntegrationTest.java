@@ -18,9 +18,13 @@ import org.springframework.test.context.ActiveProfiles;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import ktb.fullstack.talktalk.support.MySqlTestContainerConfig;
+import ktb.fullstack.talktalk.support.MongoTestContainerConfig;
+import org.springframework.context.annotation.Import;
 
 @SpringBootTest
-@ActiveProfiles("test")
+@ActiveProfiles("mongotest")
+@Import({ MySqlTestContainerConfig.class, MongoTestContainerConfig.class })
 public class ChatRoomLastMessageIntegrationTest {
 
     @Autowired

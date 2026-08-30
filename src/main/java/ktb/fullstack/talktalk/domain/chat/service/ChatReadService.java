@@ -37,6 +37,9 @@ public class ChatReadService {
 
         ChatRoomMember member = chatRoomMemberRepository.findByRoomIdAndUserId(roomId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_CHATROOM_MEMBER));
-        return messageRepository.countUnread(roomId, userId, member.getLastReadMessageId());
+        UUID lastRead = member.getLastReadMessageId();
+        return lastRead == null
+                ? messageRepository.countByRoomIdAndSenderIdNotAndDeletedAtIsNull(roomId, userId)
+                : messageRepository.countByRoomIdAndSenderIdNotAndDeletedAtIsNullAndIdGreaterThan(roomId, userId, lastRead);
     }
 }

@@ -31,10 +31,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import ktb.fullstack.talktalk.support.MongoTestContainerConfig;
 
 @SpringBootTest
-@ActiveProfiles("mysqltest")
-@Import(MySqlTestContainerConfig.class)
+@ActiveProfiles("mongotest")
+@Import({ MySqlTestContainerConfig.class, MongoTestContainerConfig.class })
 public class ChatRoomDeadlockDemoTest {
 
     private static final int THREADS = 16;

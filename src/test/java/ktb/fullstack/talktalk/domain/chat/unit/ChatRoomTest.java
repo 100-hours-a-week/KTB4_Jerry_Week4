@@ -21,9 +21,7 @@ public class ChatRoomTest {
 
     private Message message(long id, String content) {
 
-        Message m = new Message(
-                ChatRoom.dm("x:y"),
-                new User("a@a.a", "pw", "n"), content, "cid-" + id);
+        Message m = new Message(uuidOf(0), 1L, content, "cid-" + id);
         ReflectionTestUtils.setField(m, "id", uuidOf(id));
         ReflectionTestUtils.setField(m, "createdAt", LocalDateTime.of(2026, 8, 6, 21, 0));
         return m;

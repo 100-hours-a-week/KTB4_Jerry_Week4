@@ -64,7 +64,7 @@ public class MessageWriterTest {
 
         given(chatRoomRepository.findByIdForUpdate(ROOM_ID)).willReturn(Optional.of(roomFixture(ROOM_ID)));
         given(userRepository.findById(5L)).willReturn(Optional.of(userFixture(5L)));
-        given(messageRepository.saveAndFlush(any(Message.class))).willAnswer(inv -> {
+        given(messageRepository.save(any(Message.class))).willAnswer(inv -> {
             Message m = inv.getArgument(0);
             ReflectionTestUtils.setField(m, "id", MESSAGE_ID);
             return m;

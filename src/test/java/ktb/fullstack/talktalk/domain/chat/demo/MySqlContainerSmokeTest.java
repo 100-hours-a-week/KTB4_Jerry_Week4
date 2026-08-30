@@ -34,7 +34,7 @@ class MySqlContainerSmokeTest {
             assertThat(meta.getDatabaseProductName()).isEqualTo("MySQL");
 
             var rs = connection.createStatement().executeQuery(
-                    "select engine from information_schema.tables where table_schema = database() and table_name = 'messages'");
+                    "select engine from information_schema.tables where table_schema = database() and table_name = 'chat_rooms'");
             assertThat(rs.next()).isTrue();
             assertThat(rs.getString("engine")).isEqualTo("InnoDB");
         }

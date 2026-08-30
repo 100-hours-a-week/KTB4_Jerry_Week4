@@ -20,9 +20,13 @@ import org.springframework.test.context.ActiveProfiles;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import ktb.fullstack.talktalk.support.MySqlTestContainerConfig;
+import ktb.fullstack.talktalk.support.MongoTestContainerConfig;
+import org.springframework.context.annotation.Import;
 
 @SpringBootTest
-@ActiveProfiles("test")
+@ActiveProfiles("mongotest")
+@Import({ MySqlTestContainerConfig.class, MongoTestContainerConfig.class })
 public class ChatReadIntegrationTest {
 
     @Autowired
@@ -57,9 +61,9 @@ public class ChatReadIntegrationTest {
         chatRoomMemberRepository.save(new ChatRoomMember(room, me));
         chatRoomMemberRepository.save(new ChatRoomMember(room, partner));
 
-        messageRepository.save(new Message(room, me, "mine-1", "c1"));
-        messageRepository.save(new Message(room, partner, "yours-1", "c2"));
-        messageRepository.save(new Message(room, partner, "yours-2", "c3"));
+        messageRepository.save(new Message(room.getId(), me.getId(), "mine-1", "c1"));
+        messageRepository.save(new Message(room.getId(), partner.getId(), "yours-1", "c2"));
+        messageRepository.save(new Message(room.getId(), partner.getId(), "yours-2", "c3"));
 
         meId = me.getId();
         roomId = room.getId();

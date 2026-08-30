@@ -1,42 +1,24 @@
 package ktb.fullstack.talktalk.domain.chat.repository;
 
-import ktb.fullstack.talktalk.domain.chat.entity.ChatRoom;
 import ktb.fullstack.talktalk.domain.chat.entity.Message;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.springframework.data.mongodb.repository.MongoRepository;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface MessageRepository extends JpaRepository<Message, UUID> {
+public interface MessageRepository extends MongoRepository<Message, UUID> {
 
-    @Query("""
-            select m from Message m
-            join fetch m.sender
-            where m.room.id = :roomId and m.sender.id = :senderId
-                and m.clientMessageId = :clientMessageId
-           """)
-    Optional<Message> findByRoomIdAndSenderIdAndClientMessageId(@Param("roomId") UUID roomId,
-                                                                @Param("senderId") Long senderId,
-                                                                @Param("clientMessageId") String clientMessageId);
+    Optional<Message> findByRoomIdAndSenderIdAndClientMessageId(UUID roomId, Long senderId, String clientMessageId);
 
-    @Query("""
-            select m from Message m
-            where m.room.id = :roomId and (:cursor is null or m.id <= :cursor)
-            order by m.id desc
-           """)
-    List<Message> findByRoomIdAndCursor(@Param("roomId") UUID roomId, @Param("cursor") UUID cursor, Pageable pageable);
+    List<Message> findByRoomIdOrderByIdDesc(UUID roomId, Pageable pageable);
 
-    @Query("""
-            select count(m) from Message m
-            where m.room.id = :roomId and m.sender.id <> :userId and m.deletedAt is null
-                and (:lastReadMessageId is null or m.id > :lastReadMessageId)
-           """)
-    long countUnread(@Param("roomId") UUID roomId, @Param("userId") Long userId,
-                     @Param("lastReadMessageId") UUID lastReadMessageId);
+    List<Message> findByRoomIdAndIdLessThanEqualOrderByIdDesc(UUID roomId, UUID cursor, Pageable pageable);
+
+    long countByRoomIdAndSenderIdNotAndDeletedAtIsNull(UUID roomId, Long senderId);
+
+    long countByRoomIdAndSenderIdNotAndDeletedAtIsNullAndIdGreaterThan(UUID roomId, Long senderId, UUID lastReadMessageId);
 
     Optional<Message> findTopByRoomIdAndDeletedAtIsNullOrderByIdDesc(UUID roomId);
 
