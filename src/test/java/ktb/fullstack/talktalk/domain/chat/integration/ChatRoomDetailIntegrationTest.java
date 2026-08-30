@@ -2,8 +2,6 @@ package ktb.fullstack.talktalk.domain.chat.integration;
 
 import ktb.fullstack.talktalk.domain.chat.dto.response.ChatRoomDetailResponseDto;
 import ktb.fullstack.talktalk.domain.chat.entity.ChatRoom;
-import ktb.fullstack.talktalk.domain.chat.entity.ChatRoomMember;
-import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomMemberRepository;
 import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomRepository;
 import ktb.fullstack.talktalk.domain.chat.repository.MessageRepository;
 import ktb.fullstack.talktalk.domain.chat.service.ChatRoomQueryService;
@@ -20,9 +18,13 @@ import org.springframework.test.context.ActiveProfiles;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import ktb.fullstack.talktalk.support.MySqlTestContainerConfig;
+import ktb.fullstack.talktalk.support.MongoTestContainerConfig;
+import org.springframework.context.annotation.Import;
 
 @SpringBootTest
-@ActiveProfiles("test")
+@ActiveProfiles("mongotest")
+@Import({ MySqlTestContainerConfig.class, MongoTestContainerConfig.class })
 public class ChatRoomDetailIntegrationTest {
 
     @Autowired
@@ -30,9 +32,6 @@ public class ChatRoomDetailIntegrationTest {
 
     @Autowired
     ChatRoomRepository chatRoomRepository;
-
-    @Autowired
-    ChatRoomMemberRepository chatRoomMemberRepository;
 
     @Autowired
     MessageRepository messageRepository;
@@ -48,7 +47,6 @@ public class ChatRoomDetailIntegrationTest {
     void setUp() {
 
         messageRepository.deleteAll();
-        chatRoomMemberRepository.deleteAll();
         chatRoomRepository.deleteAll();
         userRepository.deleteAll();
 
@@ -63,9 +61,10 @@ public class ChatRoomDetailIntegrationTest {
 
     private ChatRoom saveRoom(User a, User b) {
 
-        ChatRoom room = chatRoomRepository.save(ChatRoom.dm(DmKey.of(a.getId(), b.getId())));
-        chatRoomMemberRepository.save(new ChatRoomMember(room, a));
-        chatRoomMemberRepository.save(new ChatRoomMember(room, b));
+        ChatRoom room = ChatRoom.dm(DmKey.of(a.getId(), b.getId()));
+        room.addMember(a.getId());
+        room.addMember(b.getId());
+        chatRoomRepository.save(room);
         return room;
     }
 

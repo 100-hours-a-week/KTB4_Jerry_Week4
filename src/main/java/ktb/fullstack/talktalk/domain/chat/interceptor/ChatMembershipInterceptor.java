@@ -1,6 +1,6 @@
 package ktb.fullstack.talktalk.domain.chat.interceptor;
 
-import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomMemberRepository;
+import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomRepository;
 import ktb.fullstack.talktalk.global.exception.BusinessException;
 import ktb.fullstack.talktalk.global.exception.ErrorCode;
 import ktb.fullstack.talktalk.global.resolver.LoginUserInfo;
@@ -29,8 +29,7 @@ public class ChatMembershipInterceptor implements ChannelInterceptor {
     private static final Pattern ROOM_TOPIC = Pattern.compile("/topic/chat/rooms/(" + UUID_REGEX + ")");
     private static final Pattern ROOM_APP = Pattern.compile("/app/chat/rooms/(" + UUID_REGEX + ")");
     private static final Set<String> PERSONAL_QUEUES = Set.of("/user/queue/acks", "/user/queue/errors", "/user/queue/rooms");
-
-    private final ChatRoomMemberRepository chatRoomMemberRepository;
+    private final ChatRoomRepository chatRoomRepository;
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
@@ -71,7 +70,7 @@ public class ChatMembershipInterceptor implements ChannelInterceptor {
 
     private void verifyMember(UUID roomId, Long userId) {
 
-        if (!chatRoomMemberRepository.existsByRoomIdAndUserId(roomId, userId)) {
+        if (!chatRoomRepository.existsByIdAndMembersUserId(roomId, userId)) {
             throw new BusinessException(ErrorCode.NOT_CHATROOM_MEMBER);
         }
     }

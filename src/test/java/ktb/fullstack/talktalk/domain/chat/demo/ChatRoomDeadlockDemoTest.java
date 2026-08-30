@@ -1,8 +1,6 @@
 package ktb.fullstack.talktalk.domain.chat.demo;
 
 import ktb.fullstack.talktalk.domain.chat.entity.ChatRoom;
-import ktb.fullstack.talktalk.domain.chat.entity.ChatRoomMember;
-import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomMemberRepository;
 import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomRepository;
 import ktb.fullstack.talktalk.domain.chat.repository.MessageRepository;
 import ktb.fullstack.talktalk.domain.chat.service.DmKey;
@@ -48,9 +46,6 @@ public class ChatRoomDeadlockDemoTest {
     ChatRoomRepository chatRoomRepository;
 
     @Autowired
-    ChatRoomMemberRepository chatRoomMemberRepository;
-
-    @Autowired
     MessageRepository messageRepository;
 
     @Autowired
@@ -62,16 +57,16 @@ public class ChatRoomDeadlockDemoTest {
     @BeforeEach
     void setUp() {
         messageRepository.deleteAll();
-        chatRoomMemberRepository.deleteAll();
         chatRoomRepository.deleteAll();
         userRepository.deleteAll();
 
         User a = userRepository.save(new User("a@a.a", "Pw123!", "a"));
         User b = userRepository.save(new User("b@b.b", "Pw123!", "b"));
 
-        ChatRoom room = chatRoomRepository.save(ChatRoom.dm(DmKey.of(a.getId(), b.getId())));
-        chatRoomMemberRepository.save(new ChatRoomMember(room, a));
-        chatRoomMemberRepository.save(new ChatRoomMember(room, b));
+        ChatRoom room = ChatRoom.dm(DmKey.of(a.getId(), b.getId()));
+        room.addMember(a.getId());
+        room.addMember(b.getId());
+        chatRoomRepository.save(room);
 
         roomId = room.getId();
         senderIds = List.of(a.getId(), b.getId());

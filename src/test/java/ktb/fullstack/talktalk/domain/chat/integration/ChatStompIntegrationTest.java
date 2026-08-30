@@ -7,8 +7,6 @@ import ktb.fullstack.talktalk.domain.chat.dto.response.ChatRoomEventDto;
 import ktb.fullstack.talktalk.domain.chat.dto.response.MessageErrorResponseDto;
 import ktb.fullstack.talktalk.domain.chat.dto.response.MessageResponseDto;
 import ktb.fullstack.talktalk.domain.chat.entity.ChatRoom;
-import ktb.fullstack.talktalk.domain.chat.entity.ChatRoomMember;
-import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomMemberRepository;
 import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomRepository;
 import ktb.fullstack.talktalk.domain.chat.repository.MessageRepository;
 import ktb.fullstack.talktalk.domain.chat.service.DmKey;
@@ -63,8 +61,6 @@ public class ChatStompIntegrationTest {
     @Autowired
     ChatRoomRepository chatRoomRepository;
     @Autowired
-    ChatRoomMemberRepository chatRoomMemberRepository;
-    @Autowired
     MessageRepository messageRepository;
 
     private static final int TIMEOUT_SECONDS = 5;
@@ -79,7 +75,6 @@ public class ChatStompIntegrationTest {
 
         messageRepository.deleteAll();
         chatRoomRepository.deleteAll();
-        chatRoomMemberRepository.deleteAll();
         sessionRepository.deleteAll();
         userRepository.deleteAll();
 
@@ -88,10 +83,13 @@ public class ChatStompIntegrationTest {
         Session session = sessionRepository.save(
                 new Session(one, "refreshToken", LocalDateTime.now().plusDays(1)));
 
-        ChatRoom room = chatRoomRepository.save(ChatRoom.dm(DmKey.of(one.getId(), other.getId())));
+        ChatRoom room = ChatRoom.dm(DmKey.of(one.getId(), other.getId()));
 
-        chatRoomMemberRepository.save(new ChatRoomMember(room, one));
-        chatRoomMemberRepository.save(new ChatRoomMember(room, other));
+        room.addMember(one.getId());
+
+        room.addMember(other.getId());
+
+        chatRoomRepository.save(room);
 
         senderId = one.getId();
         partnerId = other.getId();

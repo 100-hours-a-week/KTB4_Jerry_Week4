@@ -30,5 +30,18 @@ public class MongoIndexInitializer {
                 new Document("roomId", 1).append("senderId", 1).append("clientMessageId", 1))
                 .named("uq_message_idempotency")
                 .unique());
+
+        IndexOperations chatRooms = mongoTemplate.indexOps("chatRooms");
+
+        chatRooms.createIndex(new Index()
+                .on("dmKey", Sort.Direction.ASC)
+                .named("uq_chat_room_dm_key")
+                .unique()
+                .sparse());
+
+        chatRooms.createIndex(new Index()
+                .on("members.userId", Sort.Direction.ASC)
+                .on("lastMessage.id", Sort.Direction.DESC)
+                .named("idx_member_last_message"));
     }
 }

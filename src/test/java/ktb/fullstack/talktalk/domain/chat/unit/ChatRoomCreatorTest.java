@@ -2,7 +2,6 @@ package ktb.fullstack.talktalk.domain.chat.unit;
 
 import ktb.fullstack.talktalk.domain.chat.entity.ChatRoom;
 import ktb.fullstack.talktalk.domain.chat.entity.ChatRoomMember;
-import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomMemberRepository;
 import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomRepository;
 import ktb.fullstack.talktalk.domain.chat.service.ChatRoomCreator;
 import ktb.fullstack.talktalk.domain.user.entity.User;
@@ -35,9 +34,6 @@ public class ChatRoomCreatorTest {
     ChatRoomRepository chatRoomRepository;
 
     @Mock
-    ChatRoomMemberRepository chatRoomMemberRepository;
-
-    @Mock
     UserRepository userRepository;
 
     @InjectMocks
@@ -66,7 +62,7 @@ public class ChatRoomCreatorTest {
         ChatRoom room = chatRoomCreator.create("1:99", 1L, 99L);
 
         assertThat(room.getId()).isEqualTo(ROOM_ID);
-        then(chatRoomMemberRepository).should(times(2)).save(any(ChatRoomMember.class));
+        assertThat(room.getMembers()).extracting(ChatRoomMember::getUserId).containsExactly(1L, 99L);
     }
 
     @Test

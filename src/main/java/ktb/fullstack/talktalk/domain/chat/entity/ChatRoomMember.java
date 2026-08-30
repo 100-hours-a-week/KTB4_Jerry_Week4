@@ -1,51 +1,19 @@
 package ktb.fullstack.talktalk.domain.chat.entity;
 
-import jakarta.persistence.*;
-import ktb.fullstack.talktalk.domain.user.entity.User;
-import ktb.fullstack.talktalk.global.common.entity.BaseTimeEntity;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
-
 import java.util.UUID;
 
-@Entity
-@Table(
-        name = "chat_room_members",
-        uniqueConstraints = @UniqueConstraint(name = "uk_room_member", columnNames = {"room_id", "user_id"})
-)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ChatRoomMember extends BaseTimeEntity {
+public class ChatRoomMember {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Long userId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @OnDelete(action = OnDeleteAction.CASCADE)
-    @JoinColumn(name = "room_id", nullable = false)
-    private ChatRoom room;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @OnDelete(action = OnDeleteAction.CASCADE)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
-
-    @Column(name = "last_read_message_id")
     private UUID lastReadMessageId;
 
-    public ChatRoomMember(ChatRoom room, User user) {
-        this.room = room;
-        this.user = user;
-    }
-
-    public void updateLastRead(UUID messageId) {
-
-        if (messageId != null && (lastReadMessageId == null || messageId.compareTo(lastReadMessageId) > 0)) {
-            this.lastReadMessageId = messageId;
-        }
+    public ChatRoomMember(Long userId) {
+        this.userId = userId;
     }
 }

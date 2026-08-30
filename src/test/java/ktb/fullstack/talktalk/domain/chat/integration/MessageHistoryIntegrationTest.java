@@ -3,9 +3,7 @@ package ktb.fullstack.talktalk.domain.chat.integration;
 import ktb.fullstack.talktalk.domain.chat.dto.response.MessageListResponseDto;
 import ktb.fullstack.talktalk.domain.chat.dto.response.MessageResponseDto;
 import ktb.fullstack.talktalk.domain.chat.entity.ChatRoom;
-import ktb.fullstack.talktalk.domain.chat.entity.ChatRoomMember;
 import ktb.fullstack.talktalk.domain.chat.entity.Message;
-import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomMemberRepository;
 import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomRepository;
 import ktb.fullstack.talktalk.domain.chat.repository.MessageRepository;
 import ktb.fullstack.talktalk.domain.chat.service.DmKey;
@@ -41,9 +39,6 @@ public class MessageHistoryIntegrationTest {
     ChatRoomRepository chatRoomRepository;
 
     @Autowired
-    ChatRoomMemberRepository chatRoomMemberRepository;
-
-    @Autowired
     MessageRepository messageRepository;
 
     @Autowired
@@ -57,7 +52,6 @@ public class MessageHistoryIntegrationTest {
     void setUp() {
 
         messageRepository.deleteAll();
-        chatRoomMemberRepository.deleteAll();
         chatRoomRepository.deleteAll();
         userRepository.deleteAll();
 
@@ -65,9 +59,10 @@ public class MessageHistoryIntegrationTest {
         User partner = userRepository.save(new User("partner@a.a", "Password123!", "partner"));
         User outsider = userRepository.save(new User("outsider@a.a", "Password123!", "outsider"));
 
-        ChatRoom room = chatRoomRepository.save(ChatRoom.dm(DmKey.of(member.getId(), partner.getId())));
-        chatRoomMemberRepository.save(new ChatRoomMember(room, member));
-        chatRoomMemberRepository.save(new ChatRoomMember(room, partner));
+        ChatRoom room = ChatRoom.dm(DmKey.of(member.getId(), partner.getId()));
+        room.addMember(member.getId());
+        room.addMember(partner.getId());
+        chatRoomRepository.save(room);
 
         ChatRoom otherRoom = chatRoomRepository.save(ChatRoom.dm("99:100"));
 

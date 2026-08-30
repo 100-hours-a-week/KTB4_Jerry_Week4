@@ -1,6 +1,5 @@
 package ktb.fullstack.talktalk.domain.chat.unit;
 
-import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomMemberRepository;
 import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomRepository;
 import ktb.fullstack.talktalk.domain.chat.service.ChatRoomQueryService;
 import ktb.fullstack.talktalk.global.exception.BusinessException;
@@ -16,15 +15,14 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
+import ktb.fullstack.talktalk.domain.chat.entity.ChatRoom;
+import java.util.Optional;
 
 @ExtendWith(MockitoExtension.class)
 public class ChatRoomDetailTest {
 
     @Mock
     ChatRoomRepository chatRoomRepository;
-
-    @Mock
-    ChatRoomMemberRepository chatRoomMemberRepository;
 
     @InjectMocks
     ChatRoomQueryService chatRoomQueryService;
@@ -35,7 +33,7 @@ public class ChatRoomDetailTest {
     @DisplayName("존재하지 않는 채팅방을 조회하면 CHATROOM_NOT_FOUND 예외")
     void 없는_방() {
 
-        given(chatRoomRepository.existsById(ROOM_ID)).willReturn(false);
+        given(chatRoomRepository.findById(ROOM_ID)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> chatRoomQueryService.getRoom(ROOM_ID, 10L))
                 .isInstanceOf(BusinessException.class)
@@ -46,8 +44,9 @@ public class ChatRoomDetailTest {
     @DisplayName("채팅방은 존재하지만 멤버가 아니면 NOT_CHATROOM_MEMBER 예외")
     void 비멤버() {
 
-        given(chatRoomRepository.existsById(ROOM_ID)).willReturn(true);
-        given(chatRoomMemberRepository.existsByRoomIdAndUserId(ROOM_ID, 10L)).willReturn(false);
+        ChatRoom room = ChatRoom.dm("1:2");
+        room.addMember(77L);
+        given(chatRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(room));
 
         assertThatThrownBy(() -> chatRoomQueryService.getRoom(ROOM_ID, 10L))
                 .isInstanceOf(BusinessException.class)

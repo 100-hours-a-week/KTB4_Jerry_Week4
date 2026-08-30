@@ -1,7 +1,6 @@
 package ktb.fullstack.talktalk.domain.chat.unit;
 
 import ktb.fullstack.talktalk.domain.chat.interceptor.ChatMembershipInterceptor;
-import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomMemberRepository;
 import ktb.fullstack.talktalk.global.exception.BusinessException;
 import ktb.fullstack.talktalk.global.exception.ErrorCode;
 import ktb.fullstack.talktalk.global.resolver.LoginUserInfo;
@@ -26,12 +25,15 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
+import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomRepository;
 
 @ExtendWith(MockitoExtension.class)
 public class ChatMembershipInterceptorTest {
 
     @Mock
-    ChatRoomMemberRepository chatRoomMemberRepository;
+
+    ChatRoomRepository chatRoomRepository;
+
 
     @InjectMocks
     ChatMembershipInterceptor interceptor;
@@ -57,7 +59,7 @@ public class ChatMembershipInterceptorTest {
     @DisplayName("채팅방 멤버의 구독은 허용된다")
     void 멤버_구독_허용() {
 
-        given(chatRoomMemberRepository.existsByRoomIdAndUserId(ROOM_ID, 5L)).willReturn(true);
+        given(chatRoomRepository.existsByIdAndMembersUserId(ROOM_ID, 5L)).willReturn(true);
         Message<byte[]> message = frame(StompCommand.SUBSCRIBE, "/topic/chat/rooms/0198f3a2-7c40-7000-8a3f-1c2d3e4f5060", user(5L));
 
         assertThatCode(() -> interceptor.preSend(message, null)).doesNotThrowAnyException();
@@ -67,7 +69,7 @@ public class ChatMembershipInterceptorTest {
     @DisplayName("채팅방 멤버의 전송은 허용된다")
     void 멤버_전송_허용() {
 
-        given(chatRoomMemberRepository.existsByRoomIdAndUserId(ROOM_ID, 5L)).willReturn(true);
+        given(chatRoomRepository.existsByIdAndMembersUserId(ROOM_ID, 5L)).willReturn(true);
         Message<byte[]> message = frame(StompCommand.SEND, "/app/chat/rooms/0198f3a2-7c40-7000-8a3f-1c2d3e4f5060", user(5L));
 
         assertThatCode(() -> interceptor.preSend(message, null)).doesNotThrowAnyException();
@@ -77,7 +79,7 @@ public class ChatMembershipInterceptorTest {
     @DisplayName("채팅방 비멤버의 구독은 거부된다")
     void 비멤버_구독_거부() {
 
-        given(chatRoomMemberRepository.existsByRoomIdAndUserId(ROOM_ID, 5L)).willReturn(false);
+        given(chatRoomRepository.existsByIdAndMembersUserId(ROOM_ID, 5L)).willReturn(false);
         Message<byte[]> message = frame(StompCommand.SUBSCRIBE, "/topic/chat/rooms/0198f3a2-7c40-7000-8a3f-1c2d3e4f5060", user(5L));
 
         assertThatThrownBy(() -> interceptor.preSend(message, null))
@@ -89,7 +91,7 @@ public class ChatMembershipInterceptorTest {
     @DisplayName("채팅방 비멤버의 전송은 거부된다")
     void 비멤버_전송_거부() {
 
-        given(chatRoomMemberRepository.existsByRoomIdAndUserId(ROOM_ID, 5L)).willReturn(false);
+        given(chatRoomRepository.existsByIdAndMembersUserId(ROOM_ID, 5L)).willReturn(false);
         Message<byte[]> message = frame(StompCommand.SEND, "/app/chat/rooms/0198f3a2-7c40-7000-8a3f-1c2d3e4f5060", user(5L));
 
         assertThatThrownBy(() -> interceptor.preSend(message, null))

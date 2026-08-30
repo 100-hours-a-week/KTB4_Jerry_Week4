@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomUpdater;
 
 @ExtendWith(MockitoExtension.class)
 public class MessageWriterTest {
@@ -36,6 +37,11 @@ public class MessageWriterTest {
 
     @Mock
     UserRepository userRepository;
+
+    @Mock
+
+    ChatRoomUpdater chatRoomUpdater;
+
 
     @InjectMocks
     MessageWriter messageWriter;
@@ -62,7 +68,7 @@ public class MessageWriterTest {
     @DisplayName("채팅방과 발신자를 찾아 메시지를 저장한다")
     void 메시지_정상_저장() {
 
-        given(chatRoomRepository.findByIdForUpdate(ROOM_ID)).willReturn(Optional.of(roomFixture(ROOM_ID)));
+        given(chatRoomRepository.existsById(ROOM_ID)).willReturn(true);
         given(userRepository.findById(5L)).willReturn(Optional.of(userFixture(5L)));
         given(messageRepository.save(any(Message.class))).willAnswer(inv -> {
             Message m = inv.getArgument(0);
@@ -80,7 +86,7 @@ public class MessageWriterTest {
     @DisplayName("채팅방이 존재하지 않으면 CHATROOM_NOT_FOUND 예외")
     void 채팅방_없음() {
 
-        given(chatRoomRepository.findByIdForUpdate(ROOM_ID)).willReturn(Optional.empty());
+        given(chatRoomRepository.existsById(ROOM_ID)).willReturn(false);
 
         assertThatThrownBy(() -> messageWriter.write(ROOM_ID, 5L, "Hi", CLIENT_MESSAGE_ID))
                 .isInstanceOf(BusinessException.class)
@@ -91,7 +97,7 @@ public class MessageWriterTest {
     @DisplayName("발신자가 존재하지 않으면 INVALID_TOKEN 예외")
     void 발신자_없음() {
 
-        given(chatRoomRepository.findByIdForUpdate(ROOM_ID)).willReturn(Optional.of(roomFixture(ROOM_ID)));
+        given(chatRoomRepository.existsById(ROOM_ID)).willReturn(true);
         given(userRepository.findById(5L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> messageWriter.write(ROOM_ID, 5L, "Hi", CLIENT_MESSAGE_ID))
