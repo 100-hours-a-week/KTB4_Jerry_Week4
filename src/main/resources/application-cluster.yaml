@@ -1,0 +1,20 @@
+spring:
+  mongodb:
+    uri: mongodb://mongo:27017/talktalk
+    representation:
+      uuid: standard
+  datasource:
+    url: jdbc:mysql://mysql:3306/talktalk?characterEncoding=UTF-8&serverTimezone=UTC
+    username: talktalk
+    password: talktalk
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+  h2:
+    console:
+      enabled: false
+logging:
+  level:
+    org.hibernate.SQL: warn

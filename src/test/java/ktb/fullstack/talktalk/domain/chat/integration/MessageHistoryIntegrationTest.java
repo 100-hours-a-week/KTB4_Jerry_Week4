@@ -3,9 +3,7 @@ package ktb.fullstack.talktalk.domain.chat.integration;
 import ktb.fullstack.talktalk.domain.chat.dto.response.MessageListResponseDto;
 import ktb.fullstack.talktalk.domain.chat.dto.response.MessageResponseDto;
 import ktb.fullstack.talktalk.domain.chat.entity.ChatRoom;
-import ktb.fullstack.talktalk.domain.chat.entity.ChatRoomMember;
 import ktb.fullstack.talktalk.domain.chat.entity.Message;
-import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomMemberRepository;
 import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomRepository;
 import ktb.fullstack.talktalk.domain.chat.repository.MessageRepository;
 import ktb.fullstack.talktalk.domain.chat.service.DmKey;
@@ -21,11 +19,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import ktb.fullstack.talktalk.support.MySqlTestContainerConfig;
+import ktb.fullstack.talktalk.support.MongoTestContainerConfig;
+import org.springframework.context.annotation.Import;
 
 @SpringBootTest
-@ActiveProfiles("test")
+@ActiveProfiles("mongotest")
+@Import({ MySqlTestContainerConfig.class, MongoTestContainerConfig.class })
 public class MessageHistoryIntegrationTest {
 
     @Autowired
@@ -35,9 +39,6 @@ public class MessageHistoryIntegrationTest {
     ChatRoomRepository chatRoomRepository;
 
     @Autowired
-    ChatRoomMemberRepository chatRoomMemberRepository;
-
-    @Autowired
     MessageRepository messageRepository;
 
     @Autowired
@@ -45,13 +46,12 @@ public class MessageHistoryIntegrationTest {
 
     Long memberId;
     Long outsiderId;
-    Long roomId;
+    UUID roomId;
 
     @BeforeEach
     void setUp() {
 
         messageRepository.deleteAll();
-        chatRoomMemberRepository.deleteAll();
         chatRoomRepository.deleteAll();
         userRepository.deleteAll();
 
@@ -59,16 +59,17 @@ public class MessageHistoryIntegrationTest {
         User partner = userRepository.save(new User("partner@a.a", "Password123!", "partner"));
         User outsider = userRepository.save(new User("outsider@a.a", "Password123!", "outsider"));
 
-        ChatRoom room = chatRoomRepository.save(ChatRoom.dm(DmKey.of(member.getId(), partner.getId())));
-        chatRoomMemberRepository.save(new ChatRoomMember(room, member));
-        chatRoomMemberRepository.save(new ChatRoomMember(room, partner));
+        ChatRoom room = ChatRoom.dm(DmKey.of(member.getId(), partner.getId()));
+        room.addMember(member.getId());
+        room.addMember(partner.getId());
+        chatRoomRepository.save(room);
 
         ChatRoom otherRoom = chatRoomRepository.save(ChatRoom.dm("99:100"));
 
-        messageRepository.save(new Message(room, member, "first", "cid-1"));
-        messageRepository.save(new Message(room, member, "second", "cid-2"));
-        messageRepository.save(new Message(room, member, "third", "cid-3"));
-        messageRepository.save(new Message(otherRoom, member, "other-room", "cid-x"));
+        messageRepository.save(new Message(room.getId(), member.getId(), "first", "cid-1"));
+        messageRepository.save(new Message(room.getId(), member.getId(), "second", "cid-2"));
+        messageRepository.save(new Message(room.getId(), member.getId(), "third", "cid-3"));
+        messageRepository.save(new Message(otherRoom.getId(), member.getId(), "other-room", "cid-x"));
 
         memberId = member.getId();
         outsiderId = outsider.getId();
@@ -91,7 +92,7 @@ public class MessageHistoryIntegrationTest {
     @DisplayName("cursor 이하의 메시지만 반환한다")
     void 커서_이하_메시지만_반환() {
 
-        Long secondId = messageRepository.findAll().stream()
+        UUID secondId = messageRepository.findAll().stream()
                 .filter(m -> m.getContent().equals("second"))
                 .findFirst().orElseThrow().getId();
 

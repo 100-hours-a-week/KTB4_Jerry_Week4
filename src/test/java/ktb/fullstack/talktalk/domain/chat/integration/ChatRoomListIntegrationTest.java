@@ -3,8 +3,6 @@ package ktb.fullstack.talktalk.domain.chat.integration;
 import ktb.fullstack.talktalk.domain.chat.dto.response.ChatRoomListResponseDto;
 import ktb.fullstack.talktalk.domain.chat.dto.response.ChatRoomSummaryDto;
 import ktb.fullstack.talktalk.domain.chat.entity.ChatRoom;
-import ktb.fullstack.talktalk.domain.chat.entity.ChatRoomMember;
-import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomMemberRepository;
 import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomRepository;
 import ktb.fullstack.talktalk.domain.chat.repository.MessageRepository;
 import ktb.fullstack.talktalk.domain.chat.service.ChatReadService;
@@ -21,11 +19,16 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import ktb.fullstack.talktalk.support.MySqlTestContainerConfig;
+import ktb.fullstack.talktalk.support.MongoTestContainerConfig;
+import org.springframework.context.annotation.Import;
 
 @SpringBootTest
-@ActiveProfiles("test")
+@ActiveProfiles("mongotest")
+@Import({ MySqlTestContainerConfig.class, MongoTestContainerConfig.class })
 public class ChatRoomListIntegrationTest {
 
     @Autowired
@@ -33,9 +36,6 @@ public class ChatRoomListIntegrationTest {
 
     @Autowired
     ChatRoomRepository chatRoomRepository;
-
-    @Autowired
-    ChatRoomMemberRepository chatRoomMemberRepository;
 
     @Autowired
     MessageRepository messageRepository;
@@ -50,14 +50,13 @@ public class ChatRoomListIntegrationTest {
     ChatRoomQueryService chatRoomQueryService;
 
     Long meId;
-    Long roomWithAliceId;
-    Long roomWithBobId;
+    UUID roomWithAliceId;
+    UUID roomWithBobId;
 
     @BeforeEach
     void setUp() {
 
         messageRepository.deleteAll();
-        chatRoomMemberRepository.deleteAll();
         chatRoomRepository.deleteAll();
         userRepository.deleteAll();
 
@@ -82,9 +81,10 @@ public class ChatRoomListIntegrationTest {
 
     private ChatRoom saveRoom(User a, User b) {
 
-        ChatRoom room = chatRoomRepository.save(ChatRoom.dm(DmKey.of(a.getId(), b.getId())));
-        chatRoomMemberRepository.save(new ChatRoomMember(room, a));
-        chatRoomMemberRepository.save(new ChatRoomMember(room, b));
+        ChatRoom room = ChatRoom.dm(DmKey.of(a.getId(), b.getId()));
+        room.addMember(a.getId());
+        room.addMember(b.getId());
+        chatRoomRepository.save(room);
         return room;
     }
 
@@ -124,15 +124,15 @@ public class ChatRoomListIntegrationTest {
         }
 
         ChatRoomListResponseDto page1 = chatRoomQueryService.getMyRooms(meId, null);
-        List<Long> page1Ids = page1.getRooms().getItems().stream()
+        List<UUID> page1Ids = page1.getRooms().getItems().stream()
                 .map(ChatRoomSummaryDto::roomId).toList();
-        Long cursor = page1.getRooms().getNextCursor();
+        UUID cursor = page1.getRooms().getNextCursor();
 
         assertThat(page1Ids).hasSize(20);
         assertThat(cursor).isNotNull();
 
         ChatRoomListResponseDto page2 = chatRoomQueryService.getMyRooms(meId, cursor);
-        List<Long> page2Ids = page2.getRooms().getItems().stream()
+        List<UUID> page2Ids = page2.getRooms().getItems().stream()
                 .map(ChatRoomSummaryDto::roomId).toList();
 
         assertThat(page2Ids).hasSize(2);
@@ -145,7 +145,7 @@ public class ChatRoomListIntegrationTest {
     @DisplayName("읽음 처리하면 채팅방 목록의 안 읽음 수가 줄어든다")
     void 읽음_반영() {
 
-        Long lastId = messageRepository.findAll().stream()
+        UUID lastId = messageRepository.findAll().stream()
                 .filter(m -> m.getContent().equals("a3-last"))
                 .findFirst().orElseThrow().getId();
         chatReadService.markRead(roomWithAliceId, meId, lastId);

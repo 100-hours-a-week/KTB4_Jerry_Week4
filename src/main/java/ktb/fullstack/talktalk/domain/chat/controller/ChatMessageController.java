@@ -1,6 +1,9 @@
 package ktb.fullstack.talktalk.domain.chat.controller;
 
+import ktb.fullstack.talktalk.domain.chat.dto.response.MessageDeleteResult;
 import ktb.fullstack.talktalk.domain.chat.dto.response.MessageListResponseDto;
+import ktb.fullstack.talktalk.domain.chat.fanout.ChatFanoutPublisher;
+import ktb.fullstack.talktalk.domain.chat.service.ChatRoomEventPublisher;
 import ktb.fullstack.talktalk.domain.chat.service.MessageService;
 import ktb.fullstack.talktalk.global.common.response.ApiResponse;
 import ktb.fullstack.talktalk.global.resolver.LoginUser;
@@ -9,18 +12,22 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/chat/rooms/{roomId}/messages")
 @RequiredArgsConstructor
 public class ChatMessageController {
 
     private final MessageService messageService;
+    private final ChatRoomEventPublisher chatRoomEventPublisher;
+    private final ChatFanoutPublisher chatFanoutPublisher;
 
     @GetMapping
     public ResponseEntity<ApiResponse<MessageListResponseDto>> getMessages(
-            @PathVariable Long roomId,
+            @PathVariable UUID roomId,
             @LoginUser LoginUserInfo loginUser,
-            @RequestParam(required = false) Long cursor) {
+            @RequestParam(required = false) UUID cursor) {
 
         MessageListResponseDto result = messageService.getMessages(roomId, loginUser.userId(), cursor);
         return ResponseEntity.ok(ApiResponse.of("success", result));
@@ -28,11 +35,15 @@ public class ChatMessageController {
 
     @DeleteMapping("/{messageId}")
     public ResponseEntity<ApiResponse<Void>> deleteMessage(
-            @PathVariable Long roomId,
-            @PathVariable Long messageId,
+            @PathVariable UUID roomId,
+            @PathVariable UUID messageId,
             @LoginUser LoginUserInfo loginUser) {
 
-        messageService.deleteMessage(roomId, messageId, loginUser.userId());
+        MessageDeleteResult result = messageService.deleteMessage(roomId, messageId, loginUser.userId());
+        chatFanoutPublisher.publishRoomMessage(roomId, result.message());
+        if (result.lastMessageChanged()) {
+            chatRoomEventPublisher.publishMessageDeleted(roomId, loginUser.userId(), result.lastMessagePreview(), result.lastMessageAt());
+        }
         return ResponseEntity.ok(ApiResponse.of("success", null));
     }
 }

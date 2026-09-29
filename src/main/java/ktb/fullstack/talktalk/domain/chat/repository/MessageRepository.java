@@ -2,31 +2,25 @@ package ktb.fullstack.talktalk.domain.chat.repository;
 
 import ktb.fullstack.talktalk.domain.chat.entity.Message;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.springframework.data.mongodb.repository.MongoRepository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
-public interface MessageRepository extends JpaRepository<Message, Long> {
+public interface MessageRepository extends MongoRepository<Message, UUID> {
 
-    Optional<Message> findByRoomIdAndSenderIdAndClientMessageId(Long roomId, Long senderId, String clientMessageId);
+    Optional<Message> findByRoomIdAndSenderIdAndClientMessageId(UUID roomId, Long senderId, String clientMessageId);
 
-    @Query("""
-            select m from Message m
-            where m.room.id = :roomId and (:cursor is null or m.id <= :cursor)
-            order by m.id desc
-           """)
-    List<Message> findByRoomIdAndCursor(@Param("roomId") Long roomId, @Param("cursor") Long cursor, Pageable pageable);
+    List<Message> findByRoomIdOrderByIdDesc(UUID roomId, Pageable pageable);
 
-    @Query("""
-            select count(m) from Message m
-            where m.room.id = :roomId and m.sender.id <> :userId and m.deletedAt is null
-                and (:lastReadMessageId is null or m.id > :lastReadMessageId)
-           """)
-    long countUnread(@Param("roomId") Long roomId, @Param("userId") Long userId,
-                     @Param("lastReadMessageId") Long lastReadMessageId);
+    List<Message> findByRoomIdAndIdLessThanEqualOrderByIdDesc(UUID roomId, UUID cursor, Pageable pageable);
 
-    Optional<Message> findTopByRoomIdAndDeletedAtIsNullOrderByIdDesc(Long roomId);
+    long countByRoomIdAndSenderIdNotAndDeletedAtIsNull(UUID roomId, Long senderId);
+
+    long countByRoomIdAndSenderIdNotAndDeletedAtIsNullAndIdGreaterThan(UUID roomId, Long senderId, UUID lastReadMessageId);
+
+    Optional<Message> findTopByRoomIdAndDeletedAtIsNullOrderByIdDesc(UUID roomId);
+
+    boolean existsByIdAndRoomId(UUID id, UUID roomId);
 }

@@ -1,54 +1,63 @@
 package ktb.fullstack.talktalk.domain.chat.service;
 
-import ktb.fullstack.talktalk.domain.chat.dto.response.MessageListResponseDto;
-import ktb.fullstack.talktalk.domain.chat.dto.response.MessageResponseDto;
+import ktb.fullstack.talktalk.domain.chat.dto.response.*;
 import ktb.fullstack.talktalk.domain.chat.entity.ChatRoom;
+import ktb.fullstack.talktalk.domain.chat.entity.LastMessage;
 import ktb.fullstack.talktalk.domain.chat.entity.Message;
-import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomMemberRepository;
+import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomRepository;
+import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomUpdater;
 import ktb.fullstack.talktalk.domain.chat.repository.MessageRepository;
-import ktb.fullstack.talktalk.global.common.response.CursorPageResponse;
+import ktb.fullstack.talktalk.domain.user.service.WriterResolver;
 import ktb.fullstack.talktalk.global.exception.BusinessException;
 import ktb.fullstack.talktalk.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class MessageService {
 
     private static final int PAGE_SIZE = 30;
+    private static final int MAX_CONTENT_LENGTH = 2000;
 
     private final MessageRepository messageRepository;
     private final MessageWriter messageWriter;
-    private final ChatRoomMemberRepository chatRoomMemberRepository;
+    private final ChatRoomRepository chatRoomRepository;
+    private final WriterResolver writerResolver;
+    private final ChatRoomUpdater chatRoomUpdater;
 
-    @Transactional(readOnly = true)
-    public MessageListResponseDto getMessages(Long roomId, Long requesterId, Long cursor) {
+    public MessageListResponseDto getMessages(UUID roomId, Long requesterId, UUID cursor) {
 
-        if (!chatRoomMemberRepository.existsByRoomIdAndUserId(roomId, requesterId)) {
+        if (!chatRoomRepository.existsByIdAndMembersUserId(roomId, requesterId)) {
             throw new BusinessException(ErrorCode.NOT_CHATROOM_MEMBER);
         }
 
-        List<Message> messages = messageRepository.
-                findByRoomIdAndCursor(roomId, cursor, PageRequest.of(0, PAGE_SIZE + 1));
+        PageRequest page = PageRequest.of(0, PAGE_SIZE + 1);
+        List<Message> messages = cursor == null
+                ? messageRepository.findByRoomIdOrderByIdDesc(roomId, page)
+                : messageRepository.findByRoomIdAndIdLessThanEqualOrderByIdDesc(roomId, cursor, page);
 
         boolean hasNext = messages.size() > PAGE_SIZE;
         List<Message> pageContent = hasNext ? messages.subList(0, PAGE_SIZE) : messages;
-        Long nextCursor = hasNext ? messages.getLast().getId() : null;
+        UUID nextCursor = hasNext ? messages.getLast().getId() : null;
 
         List<MessageResponseDto> items = pageContent.stream().map(MessageResponseDto::from).toList();
-        return new MessageListResponseDto(new CursorPageResponse<>(items, nextCursor));
+        return new MessageListResponseDto(new ChatCursorPageResponse<>(items, nextCursor));
     }
 
-    public MessageResponseDto send(Long roomId, Long senderId, String content, String clientMessageId) {
+    public MessageSendResult send(UUID roomId, Long senderId, String content, String clientMessageId) {
 
-        if (content == null || content.isEmpty()) {
+        if (content == null || content.isBlank()) {
             throw new BusinessException(ErrorCode.EMPTY_MESSAGE);
+        }
+
+        if (content.length() > MAX_CONTENT_LENGTH) {
+            throw new BusinessException(ErrorCode.TOO_LONG_MESSAGE);
         }
 
         if (clientMessageId == null || clientMessageId.isBlank()) {
@@ -59,33 +68,50 @@ public class MessageService {
                 .findByRoomIdAndSenderIdAndClientMessageId(roomId, senderId, clientMessageId)
                 .orElseGet(() -> saveOrRecover(roomId, senderId, content, clientMessageId));
 
-        return MessageResponseDto.from(message);
+        return new MessageSendResult(
+                MessageResponseDto.from(message),
+                writerResolver.resolveWriter(message.getSenderId()));
     }
 
-    @Transactional
-    public void deleteMessage(Long roomId, Long messageId, Long requesterId) {
+    public MessageDeleteResult deleteMessage(UUID roomId, UUID messageId, Long requesterId) {
 
         Message message = messageRepository.findById(messageId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MESSAGE_NOT_FOUND));
 
-        if (!message.getRoom().getId().equals(roomId)) {
+        if (!message.getRoomId().equals(roomId)) {
             throw new BusinessException(ErrorCode.MESSAGE_NOT_FOUND);
         }
-        if (!message.getSender().getId().equals(requesterId)) {
+        if (!message.getSenderId().equals(requesterId)) {
             throw new BusinessException(ErrorCode.NOT_MESSAGE_OWNER);
         }
-        if (message.isDeleted()) return;
+        if (message.isDeleted()) {
+            return MessageDeleteResult.lastMessageKept(MessageResponseDto.from(message));
+        }
 
         message.softDelete();
+        messageRepository.save(message);
 
-        ChatRoom room = message.getRoom();
-        if (messageId.equals(room.getLastMessageId())) {
-            Message latest = messageRepository.findTopByRoomIdAndDeletedAtIsNullOrderByIdDesc(roomId).orElse(null);
-            room.resetLastMessage(latest);
+        ChatRoom room = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CHATROOM_NOT_FOUND));
+        boolean isLastMessage = messageId.equals(room.getLastMessageId());
+
+        MessageResponseDto deleted = MessageResponseDto.from(message);
+        if (!isLastMessage) {
+            return MessageDeleteResult.lastMessageKept(deleted);
         }
+
+        LastMessage replacement = messageRepository.findTopByRoomIdAndDeletedAtIsNullOrderByIdDesc(roomId)
+                .map(LastMessage::from)
+                .orElse(null);
+        chatRoomUpdater.resetLastMessage(roomId, replacement);
+
+        return MessageDeleteResult.lastMessageChanged(
+                deleted,
+                replacement == null ? null : replacement.getPreview(),
+                replacement == null ? null : replacement.getAt());
     }
 
-    private Message saveOrRecover(Long roomId, Long senderId, String content, String clientMessageId) {
+    private Message saveOrRecover(UUID roomId, Long senderId, String content, String clientMessageId) {
 
         try {
             return messageWriter.write(roomId, senderId, content, clientMessageId);

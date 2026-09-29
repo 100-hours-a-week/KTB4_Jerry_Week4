@@ -2,7 +2,6 @@ package ktb.fullstack.talktalk.domain.chat.unit;
 
 import ktb.fullstack.talktalk.domain.chat.entity.ChatRoom;
 import ktb.fullstack.talktalk.domain.chat.entity.ChatRoomMember;
-import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomMemberRepository;
 import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomRepository;
 import ktb.fullstack.talktalk.domain.chat.service.ChatRoomCreator;
 import ktb.fullstack.talktalk.domain.user.entity.User;
@@ -18,12 +17,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
@@ -33,13 +34,12 @@ public class ChatRoomCreatorTest {
     ChatRoomRepository chatRoomRepository;
 
     @Mock
-    ChatRoomMemberRepository chatRoomMemberRepository;
-
-    @Mock
     UserRepository userRepository;
 
     @InjectMocks
     ChatRoomCreator chatRoomCreator;
+
+    private static final UUID ROOM_ID = UUID.fromString("0198f3a2-7c40-7000-8a3f-1c2d3e4f5060");
 
     private User userFixture(Long id) {
         User user = new User("e" + id + "@a.a", "pw", "n" + id);
@@ -55,14 +55,14 @@ public class ChatRoomCreatorTest {
         given(userRepository.findById(99L)).willReturn(Optional.of(userFixture(99L)));
         given(chatRoomRepository.save(any(ChatRoom.class))).willAnswer(inv -> {
             ChatRoom r = inv.getArgument(0);
-            ReflectionTestUtils.setField(r, "id", 1L);
+            ReflectionTestUtils.setField(r, "id", ROOM_ID);
             return r;
         });
 
         ChatRoom room = chatRoomCreator.create("1:99", 1L, 99L);
 
-        assertThat(room.getId()).isEqualTo(1L);
-        then(chatRoomMemberRepository).should(times(2)).save(any(ChatRoomMember.class));
+        assertThat(room.getId()).isEqualTo(ROOM_ID);
+        assertThat(room.getMembers()).extracting(ChatRoomMember::getUserId).containsExactly(1L, 99L);
     }
 
     @Test
@@ -86,5 +86,20 @@ public class ChatRoomCreatorTest {
         assertThatThrownBy(() -> chatRoomCreator.create("1:99", 1L, 99L))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.PARTNER_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("상대방이 탈퇴한 회원이면 PARTNER_NOT_FOUND 예외")
+    void 상대방_탈퇴() {
+
+        User withdrawn = userFixture(99L);
+        withdrawn.softDelete();
+        given(userRepository.findById(1L)).willReturn(Optional.of(userFixture(1L)));
+        given(userRepository.findById(99L)).willReturn(Optional.of(withdrawn));
+
+        assertThatThrownBy(() -> chatRoomCreator.create("1:99", 1L, 99L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.PARTNER_NOT_FOUND);
+        then(chatRoomRepository).should(never()).save(any());
     }
 }

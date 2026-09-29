@@ -10,7 +10,13 @@ import java.util.Optional;
 
 public interface ProfileImageRepository extends JpaRepository<ProfileImage, Long> {
 
-    Optional<ProfileImage> findByUserIdAndCurrentTrue(Long userId);
+    @Query("""
+            select pi
+            from ProfileImage pi
+            join fetch pi.image
+            where pi.user.id = :userId and pi.current = true
+           """)
+    Optional<ProfileImage> findByUserIdAndCurrentTrue(@Param("userId") Long userId);
 
     Optional<ProfileImage> findByUserIdAndImageId(Long userId, Long imageId);
 

@@ -7,6 +7,9 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create-drop
+  data:
+    redis:
+      port: 6399
 jwt:
   secret: test-secret-key-for-hmac-sha256-at-least-32-bytes-long-0123456789
 app:

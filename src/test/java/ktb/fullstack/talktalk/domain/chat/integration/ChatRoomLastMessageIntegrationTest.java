@@ -15,10 +15,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import ktb.fullstack.talktalk.support.MySqlTestContainerConfig;
+import ktb.fullstack.talktalk.support.MongoTestContainerConfig;
+import org.springframework.context.annotation.Import;
 
 @SpringBootTest
-@ActiveProfiles("test")
+@ActiveProfiles("mongotest")
+@Import({ MySqlTestContainerConfig.class, MongoTestContainerConfig.class })
 public class ChatRoomLastMessageIntegrationTest {
 
     @Autowired
@@ -34,7 +40,7 @@ public class ChatRoomLastMessageIntegrationTest {
     MessageService messageService;
 
     Long meId;
-    Long roomId;
+    UUID roomId;
 
     @BeforeEach
     void setUp() {
@@ -56,7 +62,7 @@ public class ChatRoomLastMessageIntegrationTest {
     void 전송하면_마지막_메시지_갱신() {
 
         messageService.send(roomId, meId, "first", "c1");
-        MessageResponseDto second = messageService.send(roomId, meId, "Second Message", "c2");
+        MessageResponseDto second = messageService.send(roomId, meId, "Second Message", "c2").message();
 
         ChatRoom room = chatRoomRepository.findById(roomId).orElseThrow();
         assertThat(room.getLastMessageId()).isEqualTo(second.messageId());
@@ -68,7 +74,7 @@ public class ChatRoomLastMessageIntegrationTest {
     @DisplayName("같은 clientMessageId 재전송은 마지막 메시지를 중복 갱신하지 않는다")
     void 재전송_마지막_메시지_멱등() {
 
-        MessageResponseDto first = messageService.send(roomId, meId, "same", "c1");
+        MessageResponseDto first = messageService.send(roomId, meId, "same", "c1").message();
         messageService.send(roomId, meId, "same", "c1");
 
         ChatRoom room = chatRoomRepository.findById(roomId).orElseThrow();

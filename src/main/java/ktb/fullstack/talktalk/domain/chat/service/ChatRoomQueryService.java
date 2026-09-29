@@ -1,26 +1,26 @@
 package ktb.fullstack.talktalk.domain.chat.service;
 
+import ktb.fullstack.talktalk.domain.chat.dto.response.ChatCursorPageResponse;
 import ktb.fullstack.talktalk.domain.chat.dto.response.ChatRoomDetailResponseDto;
 import ktb.fullstack.talktalk.domain.chat.dto.response.ChatRoomListResponseDto;
 import ktb.fullstack.talktalk.domain.chat.dto.response.ChatRoomSummaryDto;
 import ktb.fullstack.talktalk.domain.chat.entity.ChatRoom;
-import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomMemberRepository;
 import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomRepository;
-import ktb.fullstack.talktalk.domain.chat.repository.RoomPartnerProjection;
+import ktb.fullstack.talktalk.domain.chat.repository.MessageUnreadCounter;
+import ktb.fullstack.talktalk.domain.chat.entity.ChatRoomMember;
 import ktb.fullstack.talktalk.domain.user.dto.WriterDto;
 import ktb.fullstack.talktalk.domain.user.service.WriterResolver;
-import ktb.fullstack.talktalk.global.common.repository.CountByIdProjection;
-import ktb.fullstack.talktalk.global.common.response.CursorPageResponse;
 import ktb.fullstack.talktalk.global.exception.BusinessException;
 import ktb.fullstack.talktalk.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -28,32 +28,35 @@ public class ChatRoomQueryService {
 
     private static final int PAGE_SIZE = 20;
     private final ChatRoomRepository chatRoomRepository;
-    private final ChatRoomMemberRepository chatRoomMemberRepository;
     private final WriterResolver writerResolver;
+    private final MessageUnreadCounter messageUnreadCounter;
 
-    @Transactional(readOnly = true)
-    public ChatRoomListResponseDto getMyRooms(Long userId, Long cursor) {
+    public ChatRoomListResponseDto getMyRooms(Long userId, UUID cursor) {
 
-        List<ChatRoom> rooms = chatRoomRepository.findRoomsByMemberAndCursor(
-                userId, cursor, PageRequest.of(0, PAGE_SIZE + 1));
+        PageRequest page = PageRequest.of(0, PAGE_SIZE + 1, Sort.by(Sort.Direction.DESC, "lastMessage.id"));
+        List<ChatRoom> rooms = cursor == null
+                ? chatRoomRepository.findRoomsByMember(userId, page)
+                : chatRoomRepository.findRoomsByMemberAndCursor(userId, cursor, page);
 
         boolean hasNext = rooms.size() > PAGE_SIZE;
         List<ChatRoom> pageContent = hasNext ? rooms.subList(0, PAGE_SIZE) : rooms;
-        Long nextCursor = hasNext ? rooms.getLast().getLastMessageId() : null;
+        UUID nextCursor = hasNext ? rooms.getLast().getLastMessageId() : null;
 
         if (pageContent.isEmpty()) {
-            return new ChatRoomListResponseDto(new CursorPageResponse<>(List.of(), nextCursor));
+            return new ChatRoomListResponseDto(new ChatCursorPageResponse<>(List.of(), nextCursor));
         }
 
-        List<Long> roomIds = pageContent.stream().map(ChatRoom::getId).toList();
-        Map<Long, Long> partnerIdByRoom = chatRoomMemberRepository.findPartners(roomIds, userId).stream()
-                .collect(Collectors.toMap(RoomPartnerProjection::getRoomId, RoomPartnerProjection::getPartnerId));
+        Map<UUID, Long> partnerIdByRoom = new HashMap<>();
+        Map<UUID, UUID> lastReadByRoom = new HashMap<>();
+
+        for (ChatRoom room: pageContent) {
+            room.partnerOf(userId).ifPresent(partnerId -> partnerIdByRoom.put(room.getId(), partnerId));
+            lastReadByRoom.put(room.getId(), room.memberOf(userId).map(ChatRoomMember::getLastReadMessageId).orElse(null));
+        }
 
         List<Long> partnerIds = partnerIdByRoom.values().stream().distinct().toList();
         Map<Long, WriterDto> partners = writerResolver.resolveWriters(partnerIds);
-
-        Map<Long, Long> unreadByRoom = chatRoomMemberRepository.countUnreadByRooms(roomIds, userId).stream()
-                .collect(Collectors.toMap(CountByIdProjection::getId, CountByIdProjection::getTotal));
+        Map<UUID, Long> unreadByRoom = messageUnreadCounter.countByRooms(lastReadByRoom, userId);
 
         List<ChatRoomSummaryDto> items = pageContent.stream()
                 .map(room -> new ChatRoomSummaryDto(
@@ -64,23 +67,19 @@ public class ChatRoomQueryService {
                         unreadByRoom.getOrDefault(room.getId(), 0L)))
                 .toList();
 
-        return new ChatRoomListResponseDto(new CursorPageResponse<>(items, nextCursor));
+        return new ChatRoomListResponseDto(new ChatCursorPageResponse<>(items, nextCursor));
     }
 
-    @Transactional(readOnly = true)
-    public ChatRoomDetailResponseDto getRoom(Long roomId, Long userId) {
+    public ChatRoomDetailResponseDto getRoom(UUID roomId, Long userId) {
 
-        if (!chatRoomRepository.existsById(roomId)) {
-            throw new BusinessException(ErrorCode.CHATROOM_NOT_FOUND);
-        }
+        ChatRoom room = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CHATROOM_NOT_FOUND));
 
-        if (!chatRoomMemberRepository.existsByRoomIdAndUserId(roomId, userId)) {
+        if (room.memberOf(userId).isEmpty()) {
             throw new BusinessException(ErrorCode.NOT_CHATROOM_MEMBER);
         }
 
-        Long partnerId = chatRoomMemberRepository.findPartners(List.of(roomId), userId).stream()
-                .map(RoomPartnerProjection::getPartnerId)
-                .findFirst()
+        Long partnerId = room.partnerOf(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PARTNER_NOT_FOUND));
 
         WriterDto partner = writerResolver.resolveWriter(partnerId);

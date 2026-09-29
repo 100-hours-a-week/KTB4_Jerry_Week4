@@ -3,10 +3,11 @@ package ktb.fullstack.talktalk.domain.chat.dto.response;
 import ktb.fullstack.talktalk.domain.chat.entity.Message;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 public record MessageResponseDto(
-        Long messageId,
-        Long roomId,
+        UUID messageId,
+        UUID roomId,
         Long senderId,
         String content,
         String clientMessageId,
@@ -17,8 +18,8 @@ public record MessageResponseDto(
 
         return new MessageResponseDto(
                 message.getId(),
-                message.getRoom().getId(),
-                message.getSender().getId(),
+                message.getRoomId(),
+                message.getSenderId(),
                 message.isDeleted() ? null : message.getContent(),
                 message.getClientMessageId(),
                 message.isDeleted(),

@@ -2,8 +2,6 @@ package ktb.fullstack.talktalk.domain.chat.integration;
 
 import ktb.fullstack.talktalk.domain.chat.dto.response.MessageResponseDto;
 import ktb.fullstack.talktalk.domain.chat.entity.ChatRoom;
-import ktb.fullstack.talktalk.domain.chat.entity.ChatRoomMember;
-import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomMemberRepository;
 import ktb.fullstack.talktalk.domain.chat.repository.ChatRoomRepository;
 import ktb.fullstack.talktalk.domain.chat.repository.MessageRepository;
 import ktb.fullstack.talktalk.domain.chat.service.DmKey;
@@ -17,10 +15,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import ktb.fullstack.talktalk.support.MySqlTestContainerConfig;
+import ktb.fullstack.talktalk.support.MongoTestContainerConfig;
+import org.springframework.context.annotation.Import;
 
 @SpringBootTest
-@ActiveProfiles("test")
+@ActiveProfiles("mongotest")
+@Import({ MySqlTestContainerConfig.class, MongoTestContainerConfig.class })
 public class MessageDeleteIntegrationTest {
 
     @Autowired
@@ -30,9 +34,6 @@ public class MessageDeleteIntegrationTest {
     ChatRoomRepository chatRoomRepository;
 
     @Autowired
-    ChatRoomMemberRepository chatRoomMemberRepository;
-
-    @Autowired
     MessageRepository messageRepository;
 
     @Autowired
@@ -40,37 +41,37 @@ public class MessageDeleteIntegrationTest {
 
     Long meId;
     Long partnerId;
-    Long roomId;
+    UUID roomId;
 
     @BeforeEach
     void setUp() {
 
         messageRepository.deleteAll();
-        chatRoomMemberRepository.deleteAll();
         chatRoomRepository.deleteAll();
         userRepository.deleteAll();
 
         User me = userRepository.save(new User("me@a.a", "pw", "me"));
         User partner = userRepository.save(new User("partner@a.a", "pw", "partner"));
-        ChatRoom room = chatRoomRepository.save(ChatRoom.dm(DmKey.of(me.getId(), partner.getId())));
-        chatRoomMemberRepository.save(new ChatRoomMember(room, me));
-        chatRoomMemberRepository.save(new ChatRoomMember(room, partner));
+        ChatRoom room = ChatRoom.dm(DmKey.of(me.getId(), partner.getId()));
+        room.addMember(me.getId());
+        room.addMember(partner.getId());
+        chatRoomRepository.save(room);
 
         meId = me.getId();
         partnerId = partner.getId();
         roomId = room.getId();
     }
 
-    private Long send(Long senderId, String content, String cid) {
+    private UUID send(Long senderId, String content, String cid) {
 
-        return messageService.send(roomId, senderId, content, cid).messageId();
+        return messageService.send(roomId, senderId, content, cid).message().messageId();
     }
 
     @Test
     @DisplayName("삭제하면 soft delete로 처리된다")
     void 소프트삭제() {
 
-        Long id = send(meId, "삭제하기", "c1");
+        UUID id = send(meId, "삭제하기", "c1");
 
         messageService.deleteMessage(roomId, id, meId);
 
@@ -86,8 +87,8 @@ public class MessageDeleteIntegrationTest {
     @DisplayName("마지막 메시지를 삭제하면 채팅방의 마지막 메시지가 직전 메시지로 재계산된다")
     void 마지막_삭제하면_미리보기_재계산() {
 
-        Long first = send(meId, "first", "c1");
-        Long last = send(meId, "last", "c2");
+        UUID first = send(meId, "first", "c1");
+        UUID last = send(meId, "last", "c2");
 
         messageService.deleteMessage(roomId, last, meId);
 
@@ -100,8 +101,8 @@ public class MessageDeleteIntegrationTest {
     @DisplayName("마지막이 아닌 메시지를 삭제하면 채팅방의 마지막 메시지는 그대로이다")
     void 중간_삭제하면_미리보기_유지() {
 
-        Long first = send(meId, "first", "c1");
-        Long last = send(meId, "last", "c2");
+        UUID first = send(meId, "first", "c1");
+        UUID last = send(meId, "last", "c2");
 
         messageService.deleteMessage(roomId, first, meId);
 
